@@ -60,6 +60,7 @@ The app integrates a **Motivational Quotes API** to display inspiring quotes tha
 
 ---
 ## Project Structure
+
 lib/
 ├── models/
 ├── services/
