@@ -48,7 +48,8 @@ The app integrates a **Motivational Quotes API** to display inspiring quotes tha
 ## Branching Strategy
 
 - **main** ensures a stable, submission-ready version of the project.  
-- **develop** allows safe collaboration and integration of team contributions.  
+- **develop** allows safe collaboration and integration of team contributions. 
+- **feature/*** used for developing new features before merging into `develop`.  
 
 ---
 ### 📌 Workflow
