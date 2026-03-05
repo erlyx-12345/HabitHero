@@ -100,9 +100,7 @@ class _LabScreenState extends State<LabScreen> {
                   sliver: SliverToBoxAdapter(child: _buildChartSection()),
                 ),
 
-                if (_dropOffs.isNotEmpty) 
-                  SliverToBoxAdapter(child: _buildWarningSection()),
-
+               
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   sliver: SliverList(
@@ -115,7 +113,7 @@ class _LabScreenState extends State<LabScreen> {
                       const SizedBox(height: 16),
                       ..._difficultyData.map((d) => _buildDifficultyRow(d)),
                       const SizedBox(height: 32),
-                      _buildLabel("ELITE PERFORMERS"),
+                      _buildLabel("CURRENT STREAKS"),
                       const SizedBox(height: 16),
                       ..._elites.map((h) => _buildStreakCard(h)),
                       const SizedBox(height: 120),
@@ -129,127 +127,218 @@ class _LabScreenState extends State<LabScreen> {
   }
 
  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(color: primaryGreen, shape: BoxShape.circle),
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          // Thinner, shorter bar for a more delicate touch
+          Container(
+            width: 3,
+            height: 12, 
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B4332),
+              borderRadius: BorderRadius.circular(1),
             ),
-            const SizedBox(width: 8),
-            Text("LAB_STABILITY_v2.0", 
-              style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: slate500, letterSpacing: 1.5)),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text("System Analytics", 
-          style: GoogleFonts.poppins(fontSize: 28, fontWeight: FontWeight.w700, color: slate900, letterSpacing: -0.5)),
-      ],
-    );
-  }
-
-  Widget _buildHeroCard() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: darkGreen,
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [darkGreen, const Color(0xFF065F46)],
-        ),
-        boxShadow: [
-          BoxShadow(color: darkGreen.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))
+          ),
+          const SizedBox(width: 8),
+          Text(
+            "ANALYTICS", 
+            style: GoogleFonts.poppins(
+              fontSize: 9, 
+              fontWeight: FontWeight.w600, 
+              color: Colors.grey[400], 
+              letterSpacing: 1.2
+            )
+          ),
         ],
       ),
-      child: Row(
+      const SizedBox(height: 2), // Tightened gap
+      Text(
+        "Habit Performance", 
+        style: GoogleFonts.poppins(
+          fontSize: 22, // Reduced from 28
+          fontWeight: FontWeight.w600, 
+          color: const Color(0xFF1A1A1A), 
+          letterSpacing: -0.4
+        )
+      ),
+    ],
+  );
+}
+
+Widget _buildHeroCard() {
+  const Color obsidianBlack = Color(0xFF000000); // Pure Black
+  const Color emeraldGreen = Color(0xFF2ECC71); // Vibrant Emerald
+
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+    constraints: const BoxConstraints(minHeight: 140),
+    decoration: BoxDecoration(
+      color: obsidianBlack,
+      borderRadius: BorderRadius.circular(24),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          blurRadius: 15,
+          offset: const Offset(0, 8),
+        )
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: Stack(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Subtle glow effect in the corner
+          Positioned(
+            right: -30,
+            top: -30,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: emeraldGreen.withOpacity(0.04),
+              ),
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(
               children: [
-                Text("HABIT CONSISTENCY", 
-                  style: GoogleFonts.poppins(color: accentGreen.withOpacity(0.8), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
-                const SizedBox(height: 2),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "AVERAGE CONSISTENCY",
+                        style: GoogleFonts.poppins(
+                          color: Colors.white.withOpacity(0.3),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            "${(_score * 100).toInt()}",
+                            style: GoogleFonts.poppins(
+                              color: emeraldGreen,
+                              fontSize: 42,
+                              fontWeight: FontWeight.w600,
+                              height: 1.1,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "%",
+                            style: GoogleFonts.poppins(
+                              color: emeraldGreen.withOpacity(0.4),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      // Status Badge in Emerald
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: emeraldGreen.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: emeraldGreen.withOpacity(0.15)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.auto_graph_rounded, color: emeraldGreen, size: 12),
+                            const SizedBox(width: 6),
+                            Text(
+                              "PERFORMANCE STABLE",
+                              style: GoogleFonts.poppins(
+                                color: emeraldGreen,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+                Stack(
+                  alignment: Alignment.center,
                   children: [
-                    Text("${(_score * 100).toInt()}", 
-                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w700)),
-                    const SizedBox(width: 4),
-                    Text("%", style: GoogleFonts.poppins(color: accentGreen, fontSize: 18, fontWeight: FontWeight.w600)),
+                    SizedBox(
+                      width: 75,
+                      height: 75,
+                      child: CircularProgressIndicator(
+                        value: _score,
+                        strokeWidth: 4,
+                        backgroundColor: Colors.white.withOpacity(0.05),
+                        color: emeraldGreen,
+                        strokeCap: StrokeCap.round,
+                      ),
+                    ),
+                    Icon(
+                      Icons.bolt_rounded,
+                      color: emeraldGreen.withOpacity(0.2),
+                      size: 24,
+                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text("30 DAYS EFFICIENCY", 
-                  style: GoogleFonts.poppins(color: Colors.white.withOpacity(0.6), fontSize: 11, fontWeight: FontWeight.w400)),
               ],
             ),
           ),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 65, height: 65, 
-                child: CircularProgressIndicator(
-                  value: _score, 
-                  strokeWidth: 6, 
-                  backgroundColor: Colors.white.withOpacity(0.1), 
-                  color: accentGreen, 
-                  strokeCap: StrokeCap.round
-                ),
-              ),
-              Icon(Icons.analytics_outlined, color: Colors.white.withOpacity(0.9), size: 24),
-            ],
+        ],
+      ),
+    ),
+  );
+}
+Widget _buildMomentumBadge() {
+  bool isPositive = _momentum >= 0;
+  return Center(
+    child: Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8), // Geometric corners
+        border: Border.all(color: Colors.grey.withOpacity(0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isPositive ? Icons.trending_up : Icons.trending_down, 
+            color: isPositive ? const Color(0xFF1B4332) : Colors.red[700], 
+            size: 16
+          ),
+          const SizedBox(width: 10),
+          Text(
+            "Momentum Delta: ${isPositive ? '+' : ''}${(_momentum * 100).toStringAsFixed(1)}%",
+            style: GoogleFonts.poppins(
+              fontSize: 11, 
+              fontWeight: FontWeight.w600, 
+              color: const Color(0xFF333333)
+            ),
           )
         ],
       ),
-    );
-  }
-
-  Widget _buildMomentumBadge() {
-    bool isPositive = _momentum >= 0;
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.only(top: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: slate100),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)
-          ]
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: isPositive ? primaryGreen.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                shape: BoxShape.circle
-              ),
-              child: Icon(isPositive ? Icons.add : Icons.remove, 
-                color: isPositive ? primaryGreen : Colors.redAccent, size: 10),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              "MOMENTUM INDEX: ${isPositive ? '+' : ''}${(_momentum * 100).toStringAsFixed(1)}%",
-              style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w700, 
-                color: slate900, letterSpacing: 0.5),
-            )
-          ],
-        ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildChartSection() {
     return Container(
@@ -373,50 +462,108 @@ class _LabScreenState extends State<LabScreen> {
   }
 
   Widget _buildTimeComparison() {
-    final categories = ["Morning", "Afternoon", "Evening", "Anytime"];
-    
-    return Row(
-      children: categories.map((label) {
-        double value = _timeOfDayStats[label] ?? 0.0;
-        Color statusColor = value >= 0.8 ? primaryGreen : (value >= 0.5 ? Colors.orange : Colors.redAccent);
-        
-        return Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 2),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: slate100, width: 1.5),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 4, height: 4,
-                  decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+  final categories = ["Morning", "Afternoon", "Evening"];
+  
+  // Icon mapping for a more visual, playful experience
+  final Map<String, IconData> categoryIcons = {
+    "Morning": Icons.wb_sunny_rounded,
+    "Afternoon": Icons.wb_cloudy_rounded,
+    "Evening": Icons.dark_mode_rounded,
+  };
+
+  return Row(
+    children: categories.map((label) {
+      double value = _timeOfDayStats[label] ?? 0.0;
+      
+      // Using the requested Dark Green for high performance
+      Color accentColor = value >= 0.8 
+          ? const Color(0xFF1B4332) 
+          : (value >= 0.5 ? Colors.orangeAccent : Colors.redAccent.withOpacity(0.8));
+      
+      return Expanded(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(32), // Bubbly, extra-rounded corners
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              )
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 1. Playful Time Icon with tinted background
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.08),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  label.toUpperCase(),
-                  style: GoogleFonts.poppins(fontSize: 7.5, fontWeight: FontWeight.w800, color: slate500),
+                child: Icon(
+                  categoryIcons[label],
+                  size: 18,
+                  color: accentColor,
                 ),
-                const SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    "${(value * 100).toInt()}%",
-                    style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: slate900),
+              ),
+              const SizedBox(height: 14),
+              
+              // 2. The Percentage with Bold Playful Type
+              Text(
+                "${(value * 100).toInt()}%",
+                style: GoogleFonts.poppins(
+                  fontSize: 20, 
+                  fontWeight: FontWeight.w800, 
+                  color: const Color(0xFF2D3142), // Soft charcoal blue
+                  height: 1.1
+                ),
+              ),
+              
+              const SizedBox(height: 4),
+              
+              // 3. Simple Label
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 10, 
+                  fontWeight: FontWeight.w600, 
+                  color: Colors.grey[400],
+                ),
+              ),
+              
+              const SizedBox(height: 12),
+              
+              // 4. Bubbly Progress Indicator (Small bar at the bottom)
+              Container(
+                width: 24,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: value.clamp(0.1, 1.0), // Ensure it's always slightly visible
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: accentColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        );
-      }).toList(),
-    );
-  }
-
+        ),
+      );
+    }).toList(),
+  );
+}
  Widget _buildDifficultyRow(Map<String, dynamic> data) {
   // 1. Calculate Difficulty
   double successRate = (data['successRate'] as num?)?.toDouble() ?? 0.0;
@@ -543,198 +690,103 @@ class _LabScreenState extends State<LabScreen> {
   );
 }
 
-  Widget _buildStreakCard(Habit h) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white, 
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: slate900.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5))]
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Color(h.colorHex).withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
-            child: Icon(IconData(h.iconCode, fontFamily: 'MaterialIcons'), color: Color(h.colorHex), size: 24),
+ Widget _buildStreakCard(Habit h) {
+  final Color habitColor = Color(h.colorHex);
+  
+  return Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      // Soft, slightly tinted white for a friendly feel
+      color: Colors.white, 
+      borderRadius: BorderRadius.circular(28), // Extra rounded "bubbly" corners
+      boxShadow: [
+        BoxShadow(
+          color: habitColor.withOpacity(0.08), 
+          blurRadius: 20, 
+          offset: const Offset(0, 8)
+        )
+      ],
+    ),
+    child: Row(
+      children: [
+        // 1. Playful Gradient Icon
+        Container(
+          height: 56,
+          width: 56,
+          decoration: BoxDecoration(
+            // Adds a subtle gradient glow for better depth
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFF1B4332).withOpacity(0.12),
+                const Color(0xFF1B4332).withOpacity(0.04),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            shape: BoxShape.circle, 
           ),
-          const SizedBox(width: 16),
-          Expanded(child: Column(
+          child: Icon(
+            IconData(h.iconCode, fontFamily: 'MaterialIcons'), 
+            // Also subtly tint the icon to match the playful dark green
+            color: const Color(0xFF1B4332), 
+            size: 28, // Sized up slightly
+          ),
+        ),
+        const SizedBox(width: 16),
+        
+        // 2. Habit Info
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(h.title, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: slate900)),
-              Text("CONSISTENCY UNIT", style: GoogleFonts.poppins(fontSize: 9, color: slate500, fontWeight: FontWeight.w900, letterSpacing: 1)),
-            ],
-          )),
-          Text("${h.streak}", style: GoogleFonts.poppins(fontWeight: FontWeight.w900, fontSize: 28, color: slate900)),
-        ],
-      ),
-    );
-  }
-
- Widget _buildWarningSection() {
-  if (_dropOffs.isEmpty) return const SizedBox.shrink();
-
-  return Container(
-    // Reduced vertical margin to move it upward
-    margin: const EdgeInsets.fromLTRB(24, 4, 24, 8), 
-    padding: const EdgeInsets.all(18), // Slightly tighter padding
-    decoration: BoxDecoration(
-      color: const Color(0xFF0F0F0F),
-      borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: Colors.redAccent.withOpacity(0.2), width: 1.5),
-    ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min, // Keep column compact
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.analytics_outlined, color: Colors.redAccent, size: 14),
-            const SizedBox(width: 8),
-            Text(
-              "NEURAL STABILITY ALERT",
-              style: GoogleFonts.poppins(
-                fontSize: 10, 
-                fontWeight: FontWeight.w900, 
-                color: Colors.redAccent,
-                letterSpacing: 1.2
+              Text(
+                h.title, 
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w700, 
+                  fontSize: 15,
+                  color: const Color(0xFF2D3142), // Soft dark blue instead of harsh black
+                )
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12), // Reduced spacing
-        Text(
-          "We've noticed your performance is dropping significantly for these tasks:",
-          style: GoogleFonts.poppins(
-            fontSize: 12, // Slightly smaller font
-            color: Colors.white.withOpacity(0.7), 
-            fontWeight: FontWeight.w400,
-            height: 1.4
+              const SizedBox(height: 2),
+              Text(
+                "You're doing great!", 
+                style: GoogleFonts.poppins(
+                  fontSize: 11, 
+                  color: Colors.grey[500], 
+                  fontWeight: FontWeight.w500,
+                )
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 14),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _dropOffs.map((task) {
-            return InkWell(
-              onTap: () => _showTaskAnalysis(task),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      task.toUpperCase(),
-                      style: GoogleFonts.poppins(
-                        fontSize: 11, 
-                        color: Colors.white, 
-                        fontWeight: FontWeight.w700
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.info_outline_rounded, color: Colors.redAccent, size: 12),
-                  ],
-                ),
+        
+        // 3. The Streak "Badge"
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B4332), // Dark green color
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.fireplace_rounded, color: Colors.white, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                "${h.streak}", 
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w800, 
+                  fontSize: 16, 
+                  color: Colors.white,
+                )
               ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Icon(Icons.bolt_rounded, size: 12, color: Colors.redAccent.withOpacity(0.6)),
-            const SizedBox(width: 4),
-            Text(
-              "Tap task to view recovery diagnostics.",
-              style: GoogleFonts.poppins(
-                fontSize: 9, 
-                color: Colors.white.withOpacity(0.4), 
-                fontWeight: FontWeight.w500
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     ),
   );
 }
-
-void _showTaskAnalysis(String taskName) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true, // Allows us to control the height better
-    backgroundColor: const Color(0xFF121212),
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (context) {
-      return ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.4, // Prevents full-screen takeover
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                taskName.toUpperCase(),
-                style: GoogleFonts.poppins(
-                  color: Colors.redAccent, 
-                  fontWeight: FontWeight.w900, 
-                  fontSize: 18,
-                  letterSpacing: 1
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "DIAGNOSTIC: You are 100% down for this task over the last cycle.",
-                style: GoogleFonts.poppins(
-                  color: Colors.white, 
-                  fontSize: 14, 
-                  fontWeight: FontWeight.w600,
-                  height: 1.4
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "SYSTEM LOG: You have missed 5 consecutive sessions. This is causing significant decay in your neural efficiency score.",
-                style: GoogleFonts.poppins(
-                  color: Colors.white.withOpacity(0.5), 
-                  fontSize: 12,
-                  height: 1.5
-                ),
-              ),
-              const Spacer(), // Pushes button to bottom
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                  child: Text("INITIATE RECOVERY", 
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
+ 
   Widget _buildLabel(String s) => Text(s, style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w900, color: slate500, letterSpacing: 2));
 }

@@ -236,6 +236,40 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   Widget _buildSaveButton() {
     return ElevatedButton(
       onPressed: () async {
+        // --- NEW CONSTRAINT CHECK ---
+        // Only check for duplicates if we are NOT in edit mode
+        if (!isEditMode) {
+          bool alreadyExists = await _controller.doesHabitExist(
+            widget.template.title, 
+            _selectedTime
+          );
+
+          if (alreadyExists) {
+            if (!mounted) return;
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                title: Text("Already Exist", 
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w800, color: const Color(0xFF0F172A))),
+                content: Text(
+                  "You currently have this habit for the ${_selectedTime.toLowerCase()}, update the current one instead.",
+                  style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF94A3B8)),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("OK", style: GoogleFonts.poppins(color: _selectedColor, fontWeight: FontWeight.w800)),
+                  ),
+                ],
+              ),
+            );
+            return; // STOP execution here
+          }
+        }
+        // -----------------------------
+
         if (isEditMode) {
           await _controller.updateHabit(
             id: widget.existingHabit!['id'],

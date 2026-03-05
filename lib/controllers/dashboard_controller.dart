@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class DashboardController {
   final dbHelper = DatabaseHelper.instance;
 
+  /// Retrieves the date the app was first opened
   Future<DateTime> getAppStartDate() async {
     final prefs = await SharedPreferences.getInstance();
     const String key = 'app_installation_date';
@@ -21,12 +22,14 @@ class DashboardController {
     }
   }
 
+  /// Fetches user name for the header
   Future<String?> getUserName() async {
     final db = await dbHelper.database;
     final userData = await db.query('users', limit: 1);
     return userData.isNotEmpty ? userData.first['name'] as String : "Hero";
   }
 
+  /// Main data fetch: Retrieves habits, calculates missed status, and sorts them
   Future<List<Map<String, dynamic>>> getHabitsWithLogs({DateTime? date}) async {
     final db = await dbHelper.database;
     DateTime targetDate = date ?? DateTime.now();
@@ -38,17 +41,72 @@ class DashboardController {
       LEFT JOIN daily_logs l ON h.id = l.habitId AND l.date = ?
       WHERE (h.endDate IS NULL OR h.endDate = '' OR date(h.endDate) >= date(?))
       AND (l.isCompleted IS NULL OR l.isCompleted != -1)
-      ORDER BY COALESCE(l.isCompleted, 0) ASC, h.resistance DESC
     ''', [dateStr, dateStr]);
 
-    return habitsData.map((habit) {
+    // 1. Process and calculate status flags
+    List<Map<String, dynamic>> processedHabits = habitsData.map((habit) {
+      final bool isDone = habit['isCompleted'] == 1;
+      final String habitTime = habit['timeOfDay'] ?? "Morning";
+      
+      // Check if task is missed based on time of day
+      bool isMissed = _calculateIsMissed(isDone, habitTime, targetDate);
+
       return {
         ...habit,
-        'isCompleted': habit['isCompleted'] == 1,
+        'isCompleted': isDone,
+        'isMissed': isMissed,
+        'isFinished': isDone || isMissed, // Sorting helper
       };
     }).toList();
+
+    // 2. Sorting Logic: Active tasks first, Finished/Missed tasks at the bottom
+    processedHabits.sort((a, b) {
+      int aStatus = a['isFinished'] ? 1 : 0;
+      int bStatus = b['isFinished'] ? 1 : 0;
+      
+      if (aStatus != bStatus) {
+        return aStatus.compareTo(bStatus);
+      }
+      
+      // Secondary sort: Keep consistent order by ID if status is same
+      return (a['id'] as int).compareTo(b['id'] as int);
+    });
+
+    return processedHabits;
   }
 
+  /// Determines if a habit should be marked as 'Missed'
+  bool _calculateIsMissed(bool isDone, String habitTime, DateTime targetDate) {
+    if (isDone) return false;
+
+    final now = DateTime.now();
+    final DateTime todayDateOnly = DateTime(now.year, now.month, now.day);
+    final DateTime targetDateOnly = DateTime(targetDate.year, targetDate.month, targetDate.day);
+
+    // Case 1: Past date and not completed
+    if (targetDateOnly.isBefore(todayDateOnly)) return true;
+
+    // Case 2: Today, but the time window has passed
+    if (targetDateOnly.isAtSameMomentAs(todayDateOnly)) {
+      final String currentPeriod = _getCurrentTimeframe();
+      if (currentPeriod == "Afternoon" && habitTime == "Morning") return true;
+      if (currentPeriod == "Evening" && (habitTime == "Morning" || habitTime == "Afternoon")) return true;
+      if (currentPeriod == "Night") return true;
+    }
+
+    return false;
+  }
+
+  /// Internal helper for time-of-day logic
+  String _getCurrentTimeframe() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return "Morning";
+    if (hour < 17) return "Afternoon";
+    if (hour < 21) return "Evening";
+    return "Night";
+  }
+
+  /// Marks a habit as completed and updates the streak
   Future<void> markHabitAsDone(int habitId, int currentStreak) async {
     final db = await dbHelper.database;
     final String today = DateFormat('yyyy-MM-dd').format(DateTime.now());
@@ -69,7 +127,7 @@ class DashboardController {
     });
   }
 
-  // OPTION A: Remove for a specific day only
+  /// Hide habit for a specific date
   Future<void> deleteHabitForDate(int habitId, DateTime selectedDate) async {
     final db = await dbHelper.database;
     final String dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
@@ -81,12 +139,9 @@ class DashboardController {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  // OPTION B: Delete permanently from everywhere
+  /// Permanently stop a habit from appearing after a certain date
   Future<void> stopHabitFromToday(int habitId, DateTime selectedDate) async {
     final db = await dbHelper.database;
-    
-    // We set the endDate to the day BEFORE the selected date.
-    // This way, it's considered "expired" when viewed on the selectedDate and beyond.
     DateTime dayBefore = selectedDate.subtract(const Duration(days: 1));
     final String expiryDate = DateFormat('yyyy-MM-dd').format(dayBefore);
 
@@ -98,6 +153,7 @@ class DashboardController {
     );
   }
   
+  /// Calculates percentage for the progress ring
   double calculateProgress(List<Map<String, dynamic>> habits) {
     if (habits.isEmpty) return 0.0;
     int completed = habits.where((h) => h['isCompleted'] == true).length;

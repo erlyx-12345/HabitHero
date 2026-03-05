@@ -29,6 +29,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _navIndex = 0;
   bool _isLoading = true;
 
+  final ScrollController _dateScrollController = ScrollController();
+
   DateTime _selectedDate = DateTime.now();
   DateTime _installationDate = DateTime.now();
   String _selectedTimeFilter = "All";
@@ -43,22 +45,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Color slate100 = const Color(0xFFF1F5F9);
 
   @override
-  void initState() {
-    super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    _displayName = widget.userName;
-    _initAppData();
-  }
+void initState() {
+  super.initState();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  _displayName = widget.userName;
+  _initAppData(); // This now handles the scroll internally
+}
+  void _scrollToToday({bool animated = true}) {
+  if (!_dateScrollController.hasClients) return;
 
-  Future<void> _initAppData() async {
-    final startDate = await _controller.getAppStartDate();
-    if (mounted) {
-      setState(() {
-        _installationDate = startDate;
-      });
-      _refreshData();
-    }
+  final DateTime today = DateTime.now();
+  final DateTime start = DateTime(
+    _installationDate.year,
+    _installationDate.month,
+    _installationDate.day,
+  );
+
+  final int daysToToday = today.difference(start).inDays;
+  
+  // Calculation: Card(72) + Margin(12) = 84.0
+  final double targetOffset = daysToToday * 84.0;
+
+  if (animated) {
+    _dateScrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutQuart,
+    );
+  } else {
+    _dateScrollController.jumpTo(targetOffset);
   }
+}
+
+ Future<void> _initAppData() async {
+  final startDate = await _controller.getAppStartDate();
+  if (mounted) {
+    setState(() {
+      _installationDate = startDate;
+    });
+
+    // We refresh data first
+    await _refreshData();
+
+    // Now that _installationDate is set and the list is built, we scroll
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToToday(animated: false);
+    });
+  }
+}
 
   Future<void> _refreshData() async {
     if (!mounted) return;
@@ -85,9 +119,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // --- ACTIONS & DIALOGS ---
-
-  // --- ACTIONS & DIALOGS ---
-
   void _showHabitActions(Map<String, dynamic> habit, IconData customIcon, String habitTime) {
   showModalBottomSheet(
     context: context,
@@ -405,7 +436,7 @@ Widget _buildPremiumAction({
     );
   }
   // --- BUILD METHODS ---
-    @override
+   @override
 Widget build(BuildContext context) {
   final DateTime now = DateTime.now();
   final String currentTimeframe = _getCurrentTimeframe();
@@ -416,7 +447,6 @@ Widget build(BuildContext context) {
   bool isToday = selectedDateOnly.isAtSameMomentAs(todayDateOnly);
   bool isPastDay = selectedDateOnly.isBefore(todayDateOnly);
 
-  // Filter & Sort Logic (Keep your existing implementation here)
   final List<Map<String, dynamic>> filteredHabits = _allHabits.where((h) {
     if (_selectedTimeFilter == "All") return true;
     return (h['timeOfDay']?.toString().toLowerCase() == _selectedTimeFilter.toLowerCase());
@@ -455,21 +485,40 @@ Widget build(BuildContext context) {
     child: Scaffold(
       backgroundColor: bgLight,
       extendBody: true,
-      
-      // --- STACKED RIGHT-SIDE FABs ---
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 12.0), // Low position
+        padding: const EdgeInsets.only(bottom: 12.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             if (!isToday)
               SizedBox(
-                height: 40, // Smaller compact button
+                height: 40,
                 child: FloatingActionButton.extended(
                   heroTag: "backToToday",
                   onPressed: () {
-                    setState(() => _selectedDate = DateTime.now());
+                    final DateTime today = DateTime.now();
+                    
+                    // Update state immediately to highlight the "Today" card in the carousel
+                    setState(() {
+                      _selectedDate = today;
+                    });
+                    
+                    final DateTime start = DateTime(_installationDate.year, _installationDate.month, _installationDate.day);
+                    final int daysToToday = today.difference(start).inDays;
+                    
+                    // Scroll calculation: (Card Width 72 + Margin 12) = 84.0
+                    final double targetOffset = daysToToday * 84.0;
+
+                    if (_dateScrollController.hasClients) {
+                      _dateScrollController.animateTo(
+                        targetOffset,
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutQuart,
+                      );
+                    }
+                    
+                    // Refresh data to show today's specific habits
                     _refreshData();
                   },
                   backgroundColor: Colors.white,
@@ -510,18 +559,11 @@ Widget build(BuildContext context) {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-
-      // --- UPDATED NAVIGATION ---
       bottomNavigationBar: CustomNavBar(
-        currentIndex: 0, // Dashboard is always the first tab (index 0)
+        currentIndex: 0,
         onTap: (index) {
-          // The CustomNavBar internal _handleNavigation logic 
-          // now handles the actual route switching to '/labs'
           if (index == 0) return; 
-          
-          setState(() {
-            _navIndex = index;
-          });
+          setState(() { _navIndex = index; });
         },
       ),
       body: Stack(
@@ -586,6 +628,7 @@ Widget build(BuildContext context) {
     ),
   );
 }
+
   Widget _buildHeader() {
     return Row(
       children: [
@@ -639,19 +682,24 @@ Widget build(BuildContext context) {
   }
 
 
-  Widget _buildDateCarousel() {
+ Widget _buildDateCarousel() {
   final DateTime today = DateTime.now();
   final DateTime todayDateOnly = DateTime(today.year, today.month, today.day);
 
   return SizedBox(
-    height: 90,
+    height: 100,
     child: ListView.builder(
+      controller: _dateScrollController,
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       itemCount: 365,
       itemBuilder: (context, index) {
-        // Original logic: Start from installation date
-        DateTime date = DateTime(_installationDate.year, _installationDate.month, _installationDate.day).add(Duration(days: index));
+        DateTime date = DateTime(
+          _installationDate.year, 
+          _installationDate.month, 
+          _installationDate.day
+        ).add(Duration(days: index));
         
         bool isSelected = date.day == _selectedDate.day && 
                           date.month == _selectedDate.month && 
@@ -667,27 +715,54 @@ Widget build(BuildContext context) {
             _refreshData();
           },
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            width: 60,
+            duration: const Duration(milliseconds: 300),
+            width: 72, 
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
               color: isSelected ? deepEmerald : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: isSelected ? deepEmerald : slate100, width: 2),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isSelected ? deepEmerald : slate100, 
+                width: 2
+              ),
+              boxShadow: isSelected ? [
+                BoxShadow(
+                  color: deepEmerald.withOpacity(0.25),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8)
+                )
+              ] : null,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(DateFormat('MMM').format(date).toUpperCase(),
-                    style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: isSelected ? Colors.white70 : slate400)),
-                Text(date.day.toString(),
-                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: isSelected ? Colors.white : slate900)),
-                Text(isToday ? "TODAY" : DateFormat('EEE').format(date).toUpperCase(),
-                    style: GoogleFonts.poppins(
-                      fontSize: 10, 
-                      fontWeight: FontWeight.w800, 
-                      color: isSelected ? Colors.white70 : (isToday ? primaryGreen : slate400)
-                    )),
+                Text(
+                  DateFormat('MMM').format(date).toUpperCase(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 10, 
+                    fontWeight: FontWeight.w600, 
+                    color: isSelected ? Colors.white70 : slate400,
+                    letterSpacing: 0.5
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  date.day.toString(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 20, 
+                    fontWeight: FontWeight.w700, 
+                    color: isSelected ? Colors.white : slate900
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isToday ? "TODAY" : DateFormat('EEE').format(date).toUpperCase(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 10, 
+                    fontWeight: FontWeight.w800, 
+                    color: isSelected ? Colors.white70 : (isToday ? primaryGreen : slate400)
+                  ),
+                ),
               ],
             ),
           ),
@@ -696,7 +771,6 @@ Widget build(BuildContext context) {
     ),
   );
 }
-
   Widget _buildTimeFilters() {
     final filters = ["All", "Morning", "Afternoon", "Evening"];
     return SingleChildScrollView(
@@ -725,6 +799,11 @@ Widget build(BuildContext context) {
   }
 
   Widget _buildPriorityCard(Map<String, dynamic> habit) {
+    // Check if finished using controller flags
+    if (habit['isCompleted'] == true || habit['isMissed'] == true) {
+      return _buildAllDoneCard();
+    }
+
     final int currentStreak = habit['streak'] ?? 0;
     final String habitTime = habit['timeOfDay'] ?? "Morning";
     
@@ -837,30 +916,12 @@ Widget build(BuildContext context) {
     );
   }
 
-  Widget _buildHabitTile(Map<String, dynamic> habit) {
+ Widget _buildHabitTile(Map<String, dynamic> habit) {
     final bool isDone = habit['isCompleted'] == true;
+    final bool isMissed = habit['isMissed'] == true; // Added from controller
     final String habitTime = habit['timeOfDay'] ?? "Morning";
-    final String currentTimeframe = _getCurrentTimeframe();
-    final DateTime now = DateTime.now();
     
-    DateTime selectedDateOnly = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-    DateTime todayDateOnly = DateTime(now.year, now.month, now.day);
-
-    bool isToday = selectedDateOnly.isAtSameMomentAs(todayDateOnly);
-    bool isPastDay = selectedDateOnly.isBefore(todayDateOnly);
-
-    bool isMissed = false;
-
-    if (!isDone) {
-      if (isPastDay) {
-        isMissed = true;
-      } else if (isToday) {
-        if (currentTimeframe == "Afternoon" && habitTime == "Morning") isMissed = true;
-        if (currentTimeframe == "Evening" && (habitTime == "Morning" || habitTime == "Afternoon")) isMissed = true;
-        if (currentTimeframe == "Night") isMissed = true;
-      }
-    }
-
+    // Logic for icon and color remains yours
     final IconData customIcon = habit['iconCode'] != null ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') : Icons.psychology;
     final Color customColor = habit['colorHex'] != null ? Color(habit['colorHex']) : primaryGreen;
 
@@ -880,7 +941,8 @@ Widget build(BuildContext context) {
         }
       },
       child: Opacity(
-        opacity: (isDone || isMissed) ? 0.6 : 1.0,
+        // Opacity now reacts to isMissed as well
+        opacity: (isDone || isMissed) ? 0.4 : 1.0, 
         child: Container(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(20),

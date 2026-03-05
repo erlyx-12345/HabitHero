@@ -71,7 +71,7 @@ class CreateHabitController {
 Future<void> deleteHabit(int habitId) async {
   final db = await dbHelper.database;
   
-  // Start a transaction to ensure both deletions happen together
+  
   await db.transaction((txn) async {
     // 1. Delete all daily progress logs for this habit
     await txn.delete(
@@ -88,6 +88,16 @@ Future<void> deleteHabit(int habitId) async {
     );
   });
 }
+
+Future<bool> doesHabitExist(String title, String timeOfDay) async {
+    final db = await dbHelper.database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'habits',
+      where: 'LOWER(TRIM(title)) = ? AND LOWER(TRIM(timeOfDay)) = ?',
+      whereArgs: [title.trim().toLowerCase(), timeOfDay.trim().toLowerCase()],
+    );
+    return result.isNotEmpty;
+  }
 
   Future<int> updateHabit({
     required int id,
