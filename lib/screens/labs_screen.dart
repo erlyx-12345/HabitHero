@@ -574,19 +574,112 @@ class _LabScreenState extends State<LabScreen> {
   }
 
   Widget _buildWarningSection() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.red.withOpacity(0.05), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.red.withOpacity(0.1))),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 20),
-          const SizedBox(width: 12),
-          Expanded(child: Text("DROP-OFF DETECTED: ${_dropOffs.join(', ')}", style: GoogleFonts.poppins(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.bold))),
-        ],
-      ),
-    );
-  }
+  if (_dropOffs.isEmpty) return const SizedBox.shrink();
 
+  return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+    padding: const EdgeInsets.all(20), // Increased padding for a more premium feel
+    decoration: BoxDecoration(
+      color: const Color(0xFF0F0F0F), // Sleek, nearly black charcoal
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(color: Colors.redAccent.withOpacity(0.2), width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          blurRadius: 15,
+          offset: const Offset(0, 8),
+        )
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Top Row: Status Header
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.analytics_outlined, color: Colors.redAccent, size: 14),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              "NEURAL STABILITY ALERT",
+              style: GoogleFonts.poppins(
+                fontSize: 10, 
+                fontWeight: FontWeight.w900, 
+                color: Colors.redAccent,
+                letterSpacing: 1.5
+              ),
+            ),
+            const Spacer(),
+            Text(
+              "CRITICAL",
+              style: GoogleFonts.poppins(
+                fontSize: 9, 
+                fontWeight: FontWeight.w900, 
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        
+        // The Message: Noticing the performance drop
+        Text(
+          "We've noticed your performance is dropping significantly for these tasks:",
+          style: GoogleFonts.poppins(
+            fontSize: 13, 
+            color: Colors.white.withOpacity(0.7), 
+            fontWeight: FontWeight.w400,
+            height: 1.5
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+
+        // The Tasks: Displayed with high contrast
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            _dropOffs.join(' • ').toUpperCase(),
+            style: GoogleFonts.poppins(
+              fontSize: 14, 
+              color: Colors.white, 
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 12),
+        
+        // Bottom Hint: Motivational micro-copy
+        Row(
+          children: [
+            Icon(Icons.bolt_rounded, size: 12, color: Colors.redAccent.withOpacity(0.6)),
+            const SizedBox(width: 4),
+            Text(
+              "Action required to maintain consistency index.",
+              style: GoogleFonts.poppins(
+                fontSize: 10, 
+                color: Colors.white.withOpacity(0.4), 
+                fontWeight: FontWeight.w500
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
   Widget _buildLabel(String s) => Text(s, style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w900, color: slate500, letterSpacing: 2));
 }
