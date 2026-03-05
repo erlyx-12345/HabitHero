@@ -573,104 +573,90 @@ class _LabScreenState extends State<LabScreen> {
     );
   }
 
-  Widget _buildWarningSection() {
+ Widget _buildWarningSection() {
   if (_dropOffs.isEmpty) return const SizedBox.shrink();
 
   return Container(
-    margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-    padding: const EdgeInsets.all(20), // Increased padding for a more premium feel
+    // Reduced vertical margin to move it upward
+    margin: const EdgeInsets.fromLTRB(24, 4, 24, 8), 
+    padding: const EdgeInsets.all(18), // Slightly tighter padding
     decoration: BoxDecoration(
-      color: const Color(0xFF0F0F0F), // Sleek, nearly black charcoal
+      color: const Color(0xFF0F0F0F),
       borderRadius: BorderRadius.circular(24),
       border: Border.all(color: Colors.redAccent.withOpacity(0.2), width: 1.5),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.2),
-          blurRadius: 15,
-          offset: const Offset(0, 8),
-        )
-      ],
     ),
     child: Column(
+      mainAxisSize: MainAxisSize.min, // Keep column compact
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Top Row: Status Header
         Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.analytics_outlined, color: Colors.redAccent, size: 14),
-            ),
-            const SizedBox(width: 10),
+            const Icon(Icons.analytics_outlined, color: Colors.redAccent, size: 14),
+            const SizedBox(width: 8),
             Text(
               "NEURAL STABILITY ALERT",
               style: GoogleFonts.poppins(
                 fontSize: 10, 
                 fontWeight: FontWeight.w900, 
                 color: Colors.redAccent,
-                letterSpacing: 1.5
-              ),
-            ),
-            const Spacer(),
-            Text(
-              "CRITICAL",
-              style: GoogleFonts.poppins(
-                fontSize: 9, 
-                fontWeight: FontWeight.w900, 
-                color: Colors.white.withOpacity(0.3),
+                letterSpacing: 1.2
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        
-        // The Message: Noticing the performance drop
+        const SizedBox(height: 12), // Reduced spacing
         Text(
           "We've noticed your performance is dropping significantly for these tasks:",
           style: GoogleFonts.poppins(
-            fontSize: 13, 
+            fontSize: 12, // Slightly smaller font
             color: Colors.white.withOpacity(0.7), 
             fontWeight: FontWeight.w400,
-            height: 1.5
+            height: 1.4
           ),
         ),
-        
-        const SizedBox(height: 12),
-
-        // The Tasks: Displayed with high contrast
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.03),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            _dropOffs.join(' • ').toUpperCase(),
-            style: GoogleFonts.poppins(
-              fontSize: 14, 
-              color: Colors.white, 
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5
-            ),
-          ),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _dropOffs.map((task) {
+            return InkWell(
+              onTap: () => _showTaskAnalysis(task),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      task.toUpperCase(),
+                      style: GoogleFonts.poppins(
+                        fontSize: 11, 
+                        color: Colors.white, 
+                        fontWeight: FontWeight.w700
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.info_outline_rounded, color: Colors.redAccent, size: 12),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
         ),
-        
-        const SizedBox(height: 12),
-        
-        // Bottom Hint: Motivational micro-copy
+        const SizedBox(height: 14),
         Row(
           children: [
             Icon(Icons.bolt_rounded, size: 12, color: Colors.redAccent.withOpacity(0.6)),
             const SizedBox(width: 4),
             Text(
-              "Action required to maintain consistency index.",
+              "Tap task to view recovery diagnostics.",
               style: GoogleFonts.poppins(
-                fontSize: 10, 
+                fontSize: 9, 
                 color: Colors.white.withOpacity(0.4), 
                 fontWeight: FontWeight.w500
               ),
@@ -679,6 +665,75 @@ class _LabScreenState extends State<LabScreen> {
         ),
       ],
     ),
+  );
+}
+
+void _showTaskAnalysis(String taskName) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true, // Allows us to control the height better
+    backgroundColor: const Color(0xFF121212),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (context) {
+      return ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.4, // Prevents full-screen takeover
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                taskName.toUpperCase(),
+                style: GoogleFonts.poppins(
+                  color: Colors.redAccent, 
+                  fontWeight: FontWeight.w900, 
+                  fontSize: 18,
+                  letterSpacing: 1
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "DIAGNOSTIC: You are 100% down for this task over the last cycle.",
+                style: GoogleFonts.poppins(
+                  color: Colors.white, 
+                  fontSize: 14, 
+                  fontWeight: FontWeight.w600,
+                  height: 1.4
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "SYSTEM LOG: You have missed 5 consecutive sessions. This is causing significant decay in your neural efficiency score.",
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withOpacity(0.5), 
+                  fontSize: 12,
+                  height: 1.5
+                ),
+              ),
+              const Spacer(), // Pushes button to bottom
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("INITIATE RECOVERY", 
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
   );
 }
   Widget _buildLabel(String s) => Text(s, style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w900, color: slate500, letterSpacing: 2));
