@@ -94,9 +94,13 @@ void initState() {
   }
 }
 
-  Future<void> _refreshData() async {
+  Future<void> _refreshData({bool silent = false}) async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    
+    // Only show the full screen loader if NOT a silent refresh
+    if (!silent) {
+      setState(() => _isLoading = true);
+    }
 
     final name = await _controller.getUserName();
     final habits = await _controller.getHabitsWithLogs(date: _selectedDate);
@@ -105,7 +109,7 @@ void initState() {
       setState(() {
         if (name != null) _displayName = name;
         _allHabits = habits;
-        _isLoading = false;
+        _isLoading = false; // Always ensure loader is off after data arrives
       });
     }
   }
@@ -681,8 +685,7 @@ Widget build(BuildContext context) {
     );
   }
 
-
- Widget _buildDateCarousel() {
+Widget _buildDateCarousel() {
   final DateTime today = DateTime.now();
   final DateTime todayDateOnly = DateTime(today.year, today.month, today.day);
 
@@ -696,42 +699,48 @@ Widget build(BuildContext context) {
       itemCount: 365,
       itemBuilder: (context, index) {
         DateTime date = DateTime(
-          _installationDate.year, 
-          _installationDate.month, 
-          _installationDate.day
+          _installationDate.year,
+          _installationDate.month,
+          _installationDate.day,
         ).add(Duration(days: index));
-        
-        bool isSelected = date.day == _selectedDate.day && 
-                          date.month == _selectedDate.month && 
-                          date.year == _selectedDate.year;
-        
-        bool isToday = date.day == todayDateOnly.day && 
-                       date.month == todayDateOnly.month && 
-                       date.year == todayDateOnly.year;
+
+        bool isSelected = date.day == _selectedDate.day &&
+            date.month == _selectedDate.month &&
+            date.year == _selectedDate.year;
+
+        bool isToday = date.day == todayDateOnly.day &&
+            date.month == todayDateOnly.month &&
+            date.year == todayDateOnly.year;
 
         return GestureDetector(
           onTap: () {
-            setState(() => _selectedDate = date);
-            _refreshData();
+            // Prevent refreshing if the user clicks the already selected date
+            if (isSelected) return;
+
+            setState(() {
+              _selectedDate = date;
+            });
+
+            // Perform a silent refresh so the screen doesn't flicker or show a loader
+            _refreshData(silent: true);
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            width: 72, 
+            width: 72,
             margin: const EdgeInsets.only(right: 12),
             decoration: BoxDecoration(
               color: isSelected ? deepEmerald : Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: isSelected ? deepEmerald : slate100, 
-                width: 2
-              ),
-              boxShadow: isSelected ? [
-                BoxShadow(
-                  color: deepEmerald.withOpacity(0.25),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8)
-                )
-              ] : null,
+                  color: isSelected ? deepEmerald : slate100, width: 2),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                          color: deepEmerald.withOpacity(0.25),
+                          blurRadius: 15,
+                          offset: const Offset(0, 8))
+                    ]
+                  : null,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -739,29 +748,28 @@ Widget build(BuildContext context) {
                 Text(
                   DateFormat('MMM').format(date).toUpperCase(),
                   style: GoogleFonts.poppins(
-                    fontSize: 10, 
-                    fontWeight: FontWeight.w600, 
-                    color: isSelected ? Colors.white70 : slate400,
-                    letterSpacing: 0.5
-                  ),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? Colors.white70 : slate400,
+                      letterSpacing: 0.5),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   date.day.toString(),
                   style: GoogleFonts.poppins(
-                    fontSize: 20, 
-                    fontWeight: FontWeight.w700, 
-                    color: isSelected ? Colors.white : slate900
-                  ),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? Colors.white : slate900),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   isToday ? "TODAY" : DateFormat('EEE').format(date).toUpperCase(),
                   style: GoogleFonts.poppins(
-                    fontSize: 10, 
-                    fontWeight: FontWeight.w800, 
-                    color: isSelected ? Colors.white70 : (isToday ? primaryGreen : slate400)
-                  ),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: isSelected
+                          ? Colors.white70
+                          : (isToday ? primaryGreen : slate400)),
                 ),
               ],
             ),
@@ -771,6 +779,7 @@ Widget build(BuildContext context) {
     ),
   );
 }
+
   Widget _buildTimeFilters() {
     final filters = ["All", "Morning", "Afternoon", "Evening"];
     return SingleChildScrollView(
