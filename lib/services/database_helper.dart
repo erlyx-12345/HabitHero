@@ -16,38 +16,52 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    
+    return await openDatabase(
+      path,
+      version: 5,
+      onCreate: _createDB,
+      onUpgrade: _onUpgrade,
+    );
   }
 
   Future _createDB(Database db, int version) async {
-    const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
-    const textType = 'TEXT NOT NULL';
-    const intType = 'INTEGER NOT NULL';
+    await db.execute('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
 
     await db.execute('''
-    CREATE TABLE habits (
-      id $idType,
-      title $textType,
-      description $textType,
-      frequency $textType,
-      createdAt $textType
-    )
+      CREATE TABLE habits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        focusArea TEXT NOT NULL,
+        title TEXT NOT NULL,
+        timeOfDay TEXT DEFAULT 'Anytime',
+        endDate TEXT,
+        iconCode INTEGER,
+        colorHex INTEGER,
+        reminder INTEGER DEFAULT 0,
+        currentTier INTEGER DEFAULT 1,
+        streak INTEGER DEFAULT 0,
+        resistance INTEGER DEFAULT 50
+      )
     ''');
 
     await db.execute('''
-    CREATE TABLE daily_logs (
-      id $idType,
-      habitId $intType,
-      date $textType,
-      isCompleted $intType,
-      FOREIGN KEY (habitId) REFERENCES habits (id) ON DELETE CASCADE
-    )
+      CREATE TABLE daily_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        habitId INTEGER,
+        date TEXT,
+        isCompleted INTEGER,
+        FOREIGN KEY (habitId) REFERENCES habits (id) ON DELETE CASCADE,
+        UNIQUE(habitId, date) 
+      )
     ''');
+
+    await db.execute('CREATE TABLE targets (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL UNIQUE)');
   }
 
-  Future<void> close() async {
-    final db = await instance.database;
-    db.close();
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 5) {
+      // Basic upgrade logic
+      await db.execute('CREATE TABLE IF NOT EXISTS targets (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL UNIQUE)');
+    }
   }
 }

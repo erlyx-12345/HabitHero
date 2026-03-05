@@ -1,0 +1,31 @@
+{
+  "focus_areas": [
+    {
+      "name": "Mindfulness",
+      "icon": "self_improvement",
+      "habits": [
+        { "title": "Morning Meditation", "duration": "10 MINS", "icon": "spa", "timeOfDay": "MORNING" },
+        { "title": "Daily Journaling", "duration": "5 MINS", "icon": "edit", "timeOfDay": "EVENING" },
+        { "title": "Box Breathing", "duration": "3 MINS", "icon": "air", "timeOfDay": "ANYTIME" }
+      ]
+    },
+    {
+      "name": "Productivity",
+      "icon": "bolt",
+      "habits": [
+        { "title": "Deep Work", "duration": "90 MINS", "icon": "psychology", "timeOfDay": "AFTERNOON" },
+        { "title": "Plan Tomorrow", "duration": "10 MINS", "icon": "event_note", "timeOfDay": "EVENING" },
+        { "title": "Inbox Zero", "duration": "15 MINS", "icon": "email", "timeOfDay": "MORNING" }
+      ]
+    },
+    {
+      "name": "Health",
+      "icon": "favorite",
+      "habits": [
+        { "title": "Drink Water", "duration": "2 MINS", "icon": "water_drop", "timeOfDay": "ALL DAY" },
+        { "title": "Quick Workout", "duration": "15 MINS", "icon": "fitness_center", "timeOfDay": "MORNING" },
+        { "title": "Walk 10k Steps", "duration": "60 MINS", "icon": "directions_walk", "timeOfDay": "ALL DAY" }
+      ]
+    }
+  ]
+}
