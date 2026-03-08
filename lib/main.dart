@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'screens/labs_screen.dart'; // Ensure this matches your filename
+import 'screens/labs_screen.dart'; 
 import 'services/database_helper.dart';
 
 void main() async {
@@ -21,7 +21,7 @@ void main() async {
     userName = user.first['name'] ?? "Hero";
     initialScreen = DashboardScreen(
       userName: userName!, 
-      selectedTargets: const [], 
+      // REMOVED: selectedTargets
     );
   } else {
     // New user - show onboarding
@@ -56,13 +56,9 @@ class HabitHeroApp extends StatelessWidget {
       routes: {
         '/dashboard': (context) => DashboardScreen(
               userName: userName ?? "Hero", 
-              selectedTargets: const [],
+              // REMOVED: selectedTargets
             ),
-        '/labs': (context) => const LabScreen(), // Updated route name to /lab
-        
-        // Placeholders for future modules
-        // '/circles': (context) => const CirclesScreen(),
-        // '/setup': (context) => const SetupScreen(),
+        '/labs': (context) => const LabScreen(),
       },
     );
   }

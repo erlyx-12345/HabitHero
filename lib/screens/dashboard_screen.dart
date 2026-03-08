@@ -10,12 +10,10 @@ import '../models/habit_model.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String userName;
-  final List<String> selectedTargets;
-
+ 
   const DashboardScreen({
     super.key,
     required this.userName,
-    required this.selectedTargets,
   });
 
   @override

@@ -1,143 +1,160 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'target_screen.dart';
+import 'hero_name_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Your preferred color palette
     const Color primaryGreen = Color(0xFF10B981);
-    const Color slate900 = Color(0xFF0F172A);
-    const Color slate500 = Color(0xFF64748B);
-    const Color bgLight = Color(0xFFF8FAFC);
 
     return Scaffold(
-      backgroundColor: bgLight,
-      body: Stack(
-        children: [
-          // Background soft accent
-          Positioned(
-            top: -50,
-            left: -50,
-            child: CircleAvatar(
-              radius: 120,
-              backgroundColor: primaryGreen.withOpacity(0.05),
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.black,
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+        ),
+        child: Stack(
+          children: [
+            // 1. BACKGROUND IMAGE
+            Positioned.fill(
+              child: Image.asset(
+                'assets/welcome_image.png',
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
-          
-          Column(
-            children: [
-              // HERO SECTION
-              Expanded(
-                flex: 5,
-                child: Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 60),
-                    padding: const EdgeInsets.all(40),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: slate900.withOpacity(0.03),
-                          blurRadius: 40,
-                          offset: const Offset(0, 10),
-                        )
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.bolt_rounded, // Energetic, playful icon
-                      size: 140,
-                      color: primaryGreen,
-                    ),
+
+            // 2. STRATEGIC GRADIENT OVERLAY
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.0, 0.4, 0.8, 1.0],
+                    colors: [
+                      Colors.black.withOpacity(0.15),
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.5),
+                      Colors.black.withOpacity(0.9),
+                    ],
                   ),
                 ),
               ),
+            ),
 
-              // CONTENT SECTION
-              Expanded(
-                flex: 5,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                  child: Column(
-                    children: [
-                      // Branding with Poppins
-                      RichText(
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
-                          children: [
-                            TextSpan(
-                              text: "Habit",
-                              style: GoogleFonts.poppins(
-                                fontSize: 42,
-                                fontWeight: FontWeight.w800,
-                                color: slate900,
-                                letterSpacing: -1,
-                              ),
-                            ),
-                            TextSpan(
-                              text: "Hero",
-                              style: GoogleFonts.poppins(
-                                fontSize: 42,
-                                fontWeight: FontWeight.w800,
-                                color: primaryGreen,
-                                letterSpacing: -1,
-                              ),
+            // 3. CONTENT
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Spacer(flex: 8),
+
+                    RichText(
+                      text: TextSpan(
+                        style: GoogleFonts.poppins(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                          shadows: [
+                            Shadow(
+                              blurRadius: 12.0,
+                              color: Colors.black.withOpacity(0.8),
+                              offset: const Offset(2, 2),
                             ),
                           ],
                         ),
+                        children: const [
+                          TextSpan(text: "Habit", style: TextStyle(color: Colors.white)),
+                          TextSpan(text: "Hero", style: TextStyle(color: primaryGreen)),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        "Track your small wins and build a better you, one day at a time.",
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          color: slate500,
-                          fontWeight: FontWeight.w400,
-                          height: 1.6,
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Text(
+                      "Track your small wins and build a better you, one day at a time.",
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w400,
+                        height: 1.6,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 8.0,
+                            color: Colors.black.withOpacity(0.9),
+                            offset: const Offset(1, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const Spacer(flex: 1),
+
+                    // 4. THE BUTTON (FIXED NAVIGATION)
+                    Center(
+                      child: Container(
+                        height: 54, 
+                        width: MediaQuery.of(context).size.width * 0.65, 
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(25), 
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF10B981), Color(0xFF059669)],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF10B981).withOpacity(0.4),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8), 
+                            ),
+                          ],
                         ),
-                      ),
-                      const Spacer(),
-                      
-                      // THE BUTTON
-                      SizedBox(
-                        width: double.infinity,
-                        height: 65,
                         child: ElevatedButton(
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const TargetScreen()),
+                              MaterialPageRoute(
+                                // FIXED: Removed the selectedTargets parameter
+                                builder: (context) => const HeroNameScreen(),
+                              ),
                             );
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryGreen,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent, 
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(25),
                             ),
                           ),
                           child: Text(
                             "Get Started",
                             style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 60),
-                    ],
-                  ),
+                    ),
+
+                    const SizedBox(height: 50),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

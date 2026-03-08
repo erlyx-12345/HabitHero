@@ -28,4 +28,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/illustration.png
+    - assets/welcome_image.png
     - assets/habits.json
