@@ -14,6 +14,7 @@ class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
     super.key,
     required this.userName,
+
   });
 
   @override
@@ -37,7 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Color primaryGreen = const Color(0xFF10B981);
   final Color deepEmerald = const Color(0xFF064E3B);
   final Color bgLight = const Color(0xFFF8FAFC);
-  final Color slate900 = const Color(0xFF0F172A);
+  final Color slate900 = const Color.fromARGB(255, 95, 98, 103);
   final Color slate600 = const Color(0xFF475569);
   final Color slate400 = const Color(0xFF94A3B8);
   final Color slate100 = const Color(0xFFF1F5F9);
@@ -806,21 +807,23 @@ Widget _buildDateCarousel() {
   }
 
   Widget _buildPriorityCard(Map<String, dynamic> habit) {
-    // Check if finished using controller flags
     if (habit['isCompleted'] == true || habit['isMissed'] == true) {
       return _buildAllDoneCard();
     }
 
+    // --- FIX: PARSE THE TIME STRING ---
+    int? rHour;
+    int? rMinute;
+    if (habit['reminderTime'] != null && habit['reminderTime'].contains(':')) {
+      final parts = habit['reminderTime'].split(':');
+      rHour = int.tryParse(parts[0]);
+      rMinute = int.tryParse(parts[1]);
+    }
+
     final int currentStreak = habit['streak'] ?? 0;
     final String habitTime = habit['timeOfDay'] ?? "Morning";
-    
-    final IconData customIcon = habit['iconCode'] != null 
-        ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') 
-        : Icons.bolt;
-    
-    final Color customColor = habit['colorHex'] != null 
-        ? Color(habit['colorHex']) 
-        : deepEmerald;
+    final IconData customIcon = habit['iconCode'] != null ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') : Icons.bolt;
+    final Color customColor = habit['colorHex'] != null ? Color(habit['colorHex']) : deepEmerald;
 
     return GestureDetector(
       onTap: () => _showHabitActions(habit, customIcon, habitTime),
@@ -829,13 +832,7 @@ Widget _buildDateCarousel() {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(40),
-          boxShadow: [
-            BoxShadow(
-              color: customColor.withOpacity(0.1), 
-              blurRadius: 25, 
-              offset: const Offset(0, 20)
-            )
-          ],
+          boxShadow: [BoxShadow(color: customColor.withOpacity(0.1), blurRadius: 25, offset: const Offset(0, 20))],
           border: Border.all(color: slate100),
         ),
         child: Column(
@@ -849,38 +846,31 @@ Widget _buildDateCarousel() {
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: customColor.withOpacity(0.1), 
-                          borderRadius: BorderRadius.circular(20)
-                        ),
+                        decoration: BoxDecoration(color: customColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.local_fire_department, color: customColor, size: 14),
                             const SizedBox(width: 4),
-                            Text("$currentStreak DAY STREAK",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10, 
-                                  fontWeight: FontWeight.w800, 
-                                  color: customColor
-                                )),
+                            Text("$currentStreak DAY STREAK", style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: customColor)),
                           ],
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Text(habit['title'] ?? "No Title",
-                          style: GoogleFonts.poppins(
-                            fontSize: 24, 
-                            fontWeight: FontWeight.w700, 
-                            color: slate900
-                          )),
+                      Text(habit['title'] ?? "No Title", style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w700, color: slate900)),
+                      
+                      // FIXED LOGIC: Uses parsed rHour/rMinute
                       Text(
-                          "${habitTime.toUpperCase()} • ${habit['focusArea']?.toUpperCase() ?? 'GENERAL'}",
-                          style: GoogleFonts.poppins(
-                            fontSize: 12, 
-                            fontWeight: FontWeight.w600, 
-                            color: slate400
-                          )),
+                        rHour != null 
+                            ? "Reminder set for ${rHour.toString().padLeft(2, '0')}:${rMinute.toString().padLeft(2, '0')}"
+                            : "No reminder set",
+                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: slate400),
+                      ),
+                      if (habit['endDate'] != null)
+                        Text(
+                          "End date: ${habit['endDate']}",
+                          style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: slate400),
+                        ),
                     ],
                   ),
                 ),
@@ -889,12 +879,8 @@ Widget _buildDateCarousel() {
                     Icon(Icons.more_horiz, color: slate400.withOpacity(0.5)),
                     const SizedBox(height: 8),
                     Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: customColor.withOpacity(0.1), 
-                        borderRadius: BorderRadius.circular(24)
-                      ),
+                      width: 64, height: 64,
+                      decoration: BoxDecoration(color: customColor.withOpacity(0.1), borderRadius: BorderRadius.circular(24)),
                       child: Icon(customIcon, color: customColor, size: 36),
                     ),
                   ],
@@ -923,12 +909,20 @@ Widget _buildDateCarousel() {
     );
   }
 
- Widget _buildHabitTile(Map<String, dynamic> habit) {
+  Widget _buildHabitTile(Map<String, dynamic> habit) {
     final bool isDone = habit['isCompleted'] == true;
-    final bool isMissed = habit['isMissed'] == true; // Added from controller
+    final bool isMissed = habit['isMissed'] == true; 
     final String habitTime = habit['timeOfDay'] ?? "Morning";
     
-    // Logic for icon and color remains yours
+    // --- FIX: PARSE THE TIME STRING ---
+    int? rHour;
+    int? rMinute;
+    if (habit['reminderTime'] != null && habit['reminderTime'].contains(':')) {
+      final parts = habit['reminderTime'].split(':');
+      rHour = int.tryParse(parts[0]);
+      rMinute = int.tryParse(parts[1]);
+    }
+
     final IconData customIcon = habit['iconCode'] != null ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') : Icons.psychology;
     final Color customColor = habit['colorHex'] != null ? Color(habit['colorHex']) : primaryGreen;
 
@@ -939,16 +933,11 @@ Widget _buildDateCarousel() {
         } else {
           String message = isDone ? "This habit is already completed." : "This habit was missed and cannot be modified.";
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message, style: GoogleFonts.poppins(fontSize: 12)),
-              backgroundColor: slate900,
-              behavior: SnackBarBehavior.floating,
-            ),
+            SnackBar(content: Text(message, style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: slate900, behavior: SnackBarBehavior.floating),
           );
         }
       },
       child: Opacity(
-        // Opacity now reacts to isMissed as well
         opacity: (isDone || isMissed) ? 0.4 : 1.0, 
         child: Container(
           margin: const EdgeInsets.only(bottom: 16),
@@ -961,8 +950,7 @@ Widget _buildDateCarousel() {
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 48, height: 48,
                 decoration: BoxDecoration(
                     color: isMissed ? Colors.redAccent.withOpacity(0.1) : customColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16)),
@@ -975,16 +963,17 @@ Widget _buildDateCarousel() {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(habit['title'],
-                        style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: slate900,
-                            decoration: (isDone || isMissed) ? TextDecoration.lineThrough : null)),
-                    Text(isMissed ? "MISSED ($habitTime)" : (isDone ? "COMPLETED" : "READY TO START"),
-                        style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isMissed ? Colors.redAccent : (isDone ? customColor : slate400))),
+                        style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: slate900, decoration: (isDone || isMissed) ? TextDecoration.lineThrough : null)),
+                    
+                    // FIXED LOGIC: Uses parsed rHour/rMinute
+                    Text(
+                      rHour != null 
+                          ? "Reminder at ${rHour.toString().padLeft(2, '0')}:${rMinute.toString().padLeft(2, '0')}"
+                          : (isMissed ? "MISSED ($habitTime)" : (isDone ? "COMPLETED" : "READY TO START")),
+                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: isMissed ? Colors.redAccent : (isDone ? customColor : slate400)),
+                    ),
+                    if (habit['endDate'] != null && !isDone && !isMissed)
+                      Text("Ends on ${habit['endDate']}", style: GoogleFonts.poppins(fontSize: 11, color: slate400)),
                   ],
                 ),
               ),
@@ -997,7 +986,7 @@ Widget _buildDateCarousel() {
       ),
     );
   }
-
+  
   Widget _buildAllDoneCard() {
     return Container(
       width: double.infinity,

@@ -4,13 +4,22 @@ import 'screens/welcome_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/labs_screen.dart'; 
 import 'services/database_helper.dart';
+import 'services/notification_service.dart';
 
 void main() async {
+  // Ensure Flutter is fully initialized before async calls
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 1. Initialize Notification Service
+  final notificationService = NotificationService();
+  await notificationService.init();
+
+  // 2. Request Permissions (This shows the pop-up on first launch)
+  await notificationService.requestPermissions();
 
   final db = await DatabaseHelper.instance.database;
   
-  // 1. Check if a user exists in the 'users' table
+  // Check if a user exists in the 'users' table
   final List<Map<String, dynamic>> user = await db.query('users', limit: 1);
   
   String? userName;
@@ -21,7 +30,6 @@ void main() async {
     userName = user.first['name'] ?? "Hero";
     initialScreen = DashboardScreen(
       userName: userName!, 
-      // REMOVED: selectedTargets
     );
   } else {
     // New user - show onboarding
@@ -43,20 +51,15 @@ class HabitHeroApp extends StatelessWidget {
       title: 'HabitHero',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // Global Poppins Typography
         textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1DB97F)),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF8FAFB),
       ),
-      // Entry point determined by DB check in main()
       home: startScreen,
-      
-      // Centralized Routing System
       routes: {
         '/dashboard': (context) => DashboardScreen(
               userName: userName ?? "Hero", 
-              // REMOVED: selectedTargets
             ),
         '/labs': (context) => const LabScreen(),
       },

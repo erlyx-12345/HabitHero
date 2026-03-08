@@ -19,7 +19,7 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 5,
+      version: 6, // Bumped version
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -38,6 +38,7 @@ class DatabaseHelper {
         iconCode INTEGER,
         colorHex INTEGER,
         reminder INTEGER DEFAULT 0,
+        reminderTime TEXT, 
         currentTier INTEGER DEFAULT 1,
         streak INTEGER DEFAULT 0,
         resistance INTEGER DEFAULT 50
@@ -51,7 +52,7 @@ class DatabaseHelper {
         date TEXT,
         isCompleted INTEGER,
         FOREIGN KEY (habitId) REFERENCES habits (id) ON DELETE CASCADE,
-        UNIQUE(habitId, date) 
+        UNIQUE(habitId, date)
       )
     ''');
 
@@ -59,9 +60,9 @@ class DatabaseHelper {
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 5) {
-      // Basic upgrade logic
-      await db.execute('CREATE TABLE IF NOT EXISTS targets (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL UNIQUE)');
+    if (oldVersion < 6) {
+      // Add the reminderTime column if upgrading from older version
+      await db.execute('ALTER TABLE habits ADD COLUMN reminderTime TEXT');
     }
   }
 }

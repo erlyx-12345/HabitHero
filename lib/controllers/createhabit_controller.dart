@@ -7,40 +7,39 @@ class CreateHabitController {
   final HabitService _service = HabitService();
   final dbHelper = DatabaseHelper.instance;
 
-  // Fetches the categorized habit templates
   Future<List<FocusArea>> fetchFocusAreas() async {
     return await _service.getFocusAreas();
   }
 
-  /// Checks if the selected time slot for today is already over.
   bool _isTimeSlotPassed(String timeOfDay) {
     final now = DateTime.now();
     final hour = now.hour;
 
     switch (timeOfDay.toLowerCase()) {
       case 'morning':
-        return hour >= 12; // Passed if it's 12 PM or later
+        return hour >= 12;
       case 'afternoon':
-        return hour >= 17; // Passed if it's 5 PM or later
+        return hour >= 17;
       case 'evening':
-        return hour >= 22; // Passed if it's 10 PM or later
+        return hour >= 22;
       default:
-        return false; // "Anytime" is never late
+        return false;
     }
   }
 
-  Future<void> addCustomizedHabit({
+  // Updated to return Future<int> so we can get the ID for notifications
+  Future<int> addCustomizedHabit({
     required String title,
     required String focusArea,
     required String timeOfDay,
     required int iconCode,
     required int colorHex,
     required int reminder,
+    String? reminderTime,
     String? endDate,
   }) async {
     final db = await dbHelper.database;
 
-    // 1. Insert the new habit
     final int habitId = await db.insert('habits', {
       'focusArea': focusArea,
       'title': title,
@@ -48,55 +47,23 @@ class CreateHabitController {
       'iconCode': iconCode,
       'colorHex': colorHex,
       'reminder': reminder,
+      'reminderTime': reminderTime,
       'endDate': endDate,
       'currentTier': 1,
       'streak': 0,
       'resistance': 50,
     });
 
-    // 2. Adjust for Late Creation: 
-    // If user creates a "Morning" habit in the afternoon, 
-    // we mark it as "hidden/skipped" for today so it starts tomorrow.
     if (_isTimeSlotPassed(timeOfDay)) {
       final String today = DateFormat('yyyy-MM-dd').format(DateTime.now());
       await db.insert('daily_logs', {
         'habitId': habitId,
         'date': today,
-        'isCompleted': -1, // -1 acts as the "Hidden" or "Removed" status
+        'isCompleted': -1,
       });
     }
-  }
-
-  // Add this method to your CreateHabitController class
-Future<void> deleteHabit(int habitId) async {
-  final db = await dbHelper.database;
-  
-  
-  await db.transaction((txn) async {
-    // 1. Delete all daily progress logs for this habit
-    await txn.delete(
-      'daily_logs',
-      where: 'habitId = ?',
-      whereArgs: [habitId],
-    );
     
-    // 2. Delete the habit definition itself
-    await txn.delete(
-      'habits',
-      where: 'id = ?',
-      whereArgs: [habitId],
-    );
-  });
-}
-
-Future<bool> doesHabitExist(String title, String timeOfDay) async {
-    final db = await dbHelper.database;
-    final List<Map<String, dynamic>> result = await db.query(
-      'habits',
-      where: 'LOWER(TRIM(title)) = ? AND LOWER(TRIM(timeOfDay)) = ?',
-      whereArgs: [title.trim().toLowerCase(), timeOfDay.trim().toLowerCase()],
-    );
-    return result.isNotEmpty;
+    return habitId;
   }
 
   Future<int> updateHabit({
@@ -107,6 +74,7 @@ Future<bool> doesHabitExist(String title, String timeOfDay) async {
     required int iconCode,
     required int colorHex,
     required int reminder,
+    String? reminderTime,
     String? endDate,
   }) async {
     final db = await dbHelper.database;
@@ -120,10 +88,29 @@ Future<bool> doesHabitExist(String title, String timeOfDay) async {
         'iconCode': iconCode,
         'colorHex': colorHex,
         'reminder': reminder,
+        'reminderTime': reminderTime,
         'endDate': endDate,
       },
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  Future<bool> doesHabitExist(String title, String timeOfDay) async {
+    final db = await dbHelper.database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'habits',
+      where: 'LOWER(TRIM(title)) = ? AND LOWER(TRIM(timeOfDay)) = ?',
+      whereArgs: [title.trim().toLowerCase(), timeOfDay.trim().toLowerCase()],
+    );
+    return result.isNotEmpty;
+  }
+
+  Future<void> deleteHabit(int habitId) async {
+    final db = await dbHelper.database;
+    await db.transaction((txn) async {
+      await txn.delete('daily_logs', where: 'habitId = ?', whereArgs: [habitId]);
+      await txn.delete('habits', where: 'id = ?', whereArgs: [habitId]);
+    });
   }
 }
