@@ -65,12 +65,25 @@ The app is developed for the **Advance Mobile Application Development** course a
 
 ## Screenshots
 
-> Add actual images in `assets/screenshots/` and update paths below:
+<p align="center">
+  <img src="assets/screenshots/home.png" width="200"><br>
+  <b>Home Screen</b>
+</p>
 
-- ![Home Screen](assets/screenshots/home.png)
-- ![Habits List](assets/screenshots/habits_list.png)
-- ![Daily Log](assets/screenshots/daily_log.png)
-- ![Statistics](assets/screenshots/stats.png)
+<p align="center">
+  <img src="assets/screenshots/habits_list.png" width="200"><br>
+  <b>Habits List Screen</b>
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/daily_log.png" width="200"><br>
+  <b>Daily Log Screen</b>
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/stats.png" width="200"><br>
+  <b>Statistics Screen</b>
+</p>
 
 ---
 
