@@ -1,6 +1,5 @@
 # HabitHero
 
-![Dart CI](https://github.com/erlyx-12345/HabitHero/actions/workflows/dart.yml/badge.svg)
 
 **HabitHero** is a cross-platform mobile habit tracker for Android and iOS, built with Flutter. The app helps users form long-term routines by logging daily habits, tracking completion streaks, and providing motivational quotes.
 
