@@ -195,3 +195,5 @@ flutter test
 3. Code review, then merge into `develop`
 4. Final candidate merge into `main` once stabilized
 
+---
+CI pipeline test
