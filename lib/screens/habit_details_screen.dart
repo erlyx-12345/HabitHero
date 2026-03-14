@@ -28,12 +28,10 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   late IconData _selectedIcon;
   late Color _selectedColor;
   bool _remindersEnabled = false;
-  String? _reminderTimeLabel;
   DateTime? _endDate;
   
-  // LOGIC FIX: Store raw TimeOfDay to avoid String parsing errors
   TimeOfDay? _pickedReminderTime; 
-  dynamic _selectedTimePeriod; // Stores "Morning", "Afternoon", etc.
+  dynamic _selectedTimePeriod;
 
   final List<Color> _palette = [
     const Color(0xFF10B981),
@@ -55,13 +53,16 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
       _selectedColor = Color(habit['colorHex']);
       _selectedTimePeriod = habit['timeOfDay'] ?? "Anytime";
       _remindersEnabled = habit['reminder'] == 1;
-      _reminderTimeLabel = habit['reminderTime'];
       
-      // Try to reconstruct _pickedReminderTime if editing
-      if (_reminderTimeLabel != null) {
-        // Simple fallback: If it's a string from DB, we extract numbers if possible 
-        // or just set to default to avoid crash.
-        _pickedReminderTime = _getDefaultStartTime();
+      String? rawTime = habit['reminderTime'];
+      if (rawTime != null && rawTime.contains(':')) {
+        final parts = rawTime.split(':');
+        _pickedReminderTime = TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
+      } else {
+        _pickedReminderTime = null;
       }
 
       if (habit['endDate'] != null) {
@@ -91,6 +92,9 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // We format the label here in build() where context is safe to use
+    final String timeLabel = _pickedReminderTime?.format(context) ?? "";
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -119,13 +123,13 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
             _buildSectionLabel("ADVANCED SETTINGS"),
             
             _buildSettingsToggle(
-              _remindersEnabled ? "Reminder set for $_reminderTimeLabel" : "Set a Reminder", 
+              _remindersEnabled ? "Reminder set for $timeLabel" : "Set a Reminder", 
               _remindersEnabled, 
               (v) async {
                 if (v) {
                   final TimeOfDay? picked = await showTimePicker(
                     context: context,
-                    initialTime: _getDefaultStartTime(),
+                    initialTime: _pickedReminderTime ?? _getDefaultStartTime(),
                     helpText: "SELECT ${_selectedTimePeriod.toString().toUpperCase()} REMINDER",
                   );
 
@@ -134,7 +138,6 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
                       setState(() {
                         _remindersEnabled = true;
                         _pickedReminderTime = picked;
-                        _reminderTimeLabel = picked.format(context);
                       });
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -146,7 +149,6 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
                 } else {
                   setState(() {
                     _remindersEnabled = false;
-                    _reminderTimeLabel = null;
                     _pickedReminderTime = null;
                   });
                 }
@@ -164,60 +166,104 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
+    Widget _buildSaveButton() {
     return ElevatedButton(
       onPressed: () async {
+        // 1. Prevent duplicates if creating a new habit
         if (!isEditMode) {
-          bool alreadyExists = await _controller.doesHabitExist(widget.template.title, _selectedTimePeriod);
+          bool alreadyExists = await _controller.doesHabitExist(
+            widget.template.title, 
+            _selectedTimePeriod
+          );
           if (alreadyExists) {
             _showExistDialog();
             return;
           }
         }
 
-        int habitId;
-        if (isEditMode) {
-          habitId = widget.existingHabit!['id'];
-          await _controller.updateHabit(
-            id: habitId,
-            title: widget.template.title,
-            focusArea: widget.focusArea,
-            timeOfDay: _selectedTimePeriod,
-            iconCode: _selectedIcon.codePoint,
-            colorHex: _selectedColor.value,
-            reminder: _remindersEnabled ? 1 : 0,
-            reminderTime: _reminderTimeLabel,
-            endDate: _endDate?.toIso8601String(),
-          );
-        } else {
-          habitId = await _controller.addCustomizedHabit(
-            title: widget.template.title,
-            focusArea: widget.focusArea,
-            timeOfDay: _selectedTimePeriod,
-            iconCode: _selectedIcon.codePoint,
-            colorHex: _selectedColor.value,
-            reminder: _remindersEnabled ? 1 : 0,
-            reminderTime: _reminderTimeLabel,
-            endDate: _endDate?.toIso8601String(),
-          );
+        // 2. Format the picked time strictly (HH:mm) for DB storage
+        String? dbTime;
+        if (_pickedReminderTime != null) {
+          dbTime = "${_pickedReminderTime!.hour.toString().padLeft(2, '0')}:${_pickedReminderTime!.minute.toString().padLeft(2, '0')}";
         }
 
-        // --- NOTIFICATION FIX ---
-        if (_remindersEnabled && _pickedReminderTime != null) {
-          // Pass raw hour and minute integers directly to service
-          await _notificationService.scheduleHabitReminder(
-            habitId, 
-            widget.template.title, 
-            _pickedReminderTime!.hour,
-            _pickedReminderTime!.minute
-          );
-        } else {
-          await _notificationService.cancelReminder(habitId);
-        }
+        int? habitId; 
         
-        if (mounted) {
-          Navigator.pop(context, true);
-          if (!isEditMode) Navigator.pop(context, true);
+        try {
+          // 3. Save or Update in Database
+          if (isEditMode) {
+            habitId = widget.existingHabit!['id'];
+            await _controller.updateHabit(
+              id: habitId!,
+              title: widget.template.title,
+              focusArea: widget.focusArea,
+              timeOfDay: _selectedTimePeriod,
+              iconCode: _selectedIcon.codePoint,
+              colorHex: _selectedColor.value,
+              reminder: _remindersEnabled ? 1 : 0,
+              reminderTime: dbTime,
+              endDate: _endDate?.toIso8601String(),
+            );
+          } else {
+            final newId = await _controller.addCustomizedHabit(
+              title: widget.template.title,
+              focusArea: widget.focusArea,
+              timeOfDay: _selectedTimePeriod,
+              iconCode: _selectedIcon.codePoint,
+              colorHex: _selectedColor.value,
+              reminder: _remindersEnabled ? 1 : 0,
+              reminderTime: dbTime,
+              endDate: _endDate?.toIso8601String(),
+            );
+            habitId = newId;
+          }
+
+          // 4. Handle Alarms/Notifications
+          if (habitId != null && habitId != 0) {
+            if (_remindersEnabled && _pickedReminderTime != null) {
+              debugPrint("HabitHero: Scheduling alarm for ID $habitId at $dbTime");
+
+              // --- START DEBUG TRIGGER ---
+              // If the picked time is within 2 minutes of 'now', 
+              // we fire an instant 30-second test to verify the system works.
+              final now = TimeOfDay.now();
+              int diff = (_pickedReminderTime!.hour * 60 + _pickedReminderTime!.minute) - 
+                         (now.hour * 60 + now.minute);
+              
+              if (diff >= 0 && diff <= 2) {
+                debugPrint("HabitHero: Close proximity detected. Testing system with 30s delay...");
+                await _notificationService.instantFireTest(); 
+              }
+              // --- END DEBUG TRIGGER ---
+
+              // Schedule the actual recurring reminder
+              await _notificationService.scheduleHabitReminder(
+                habitId, 
+                widget.template.title, 
+                _pickedReminderTime!.hour,
+                _pickedReminderTime!.minute
+              );
+            } else {
+              // If user toggled reminders OFF, remove any existing alarm for this habit
+              await _notificationService.cancelReminder(habitId);
+            }
+          } else {
+            debugPrint("HabitHero Error: habitId is null/0, skipping notification sync.");
+          }
+
+          // 5. Navigation: Go back to Dashboard
+          if (mounted) {
+            // If in edit mode, pop once. If from selection, pop twice to reach dashboard.
+            Navigator.pop(context, true); 
+            if (!isEditMode) Navigator.pop(context, true); 
+          }
+        } catch (e) {
+          debugPrint("HabitHero Save Error: $e");
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Failed to save habit. Please try again."))
+            );
+          }
         }
       },
       style: ElevatedButton.styleFrom(
@@ -229,12 +275,14 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
       ),
       child: Text(
         isEditMode ? "UPDATE HABIT" : "CREATE HABIT",
-        style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 1)
+        style: GoogleFonts.poppins(
+          fontSize: 14, 
+          fontWeight: FontWeight.w800, 
+          letterSpacing: 1
+        ),
       ),
     );
   }
-
-  // --- UI HELPER METHODS ---
 
   Widget _buildHeroSection() {
     return Container(
@@ -297,7 +345,6 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
           onTap: () => setState(() {
             _selectedTimePeriod = time;
             _remindersEnabled = false;
-            _reminderTimeLabel = null;
             _pickedReminderTime = null;
           }),
           child: Container(

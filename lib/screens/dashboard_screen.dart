@@ -4,9 +4,77 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/dashboard_controller.dart';
 import '../components/custom_navbar.dart';
+import '../services/notification_service.dart';
 import 'create_habit_screen.dart';
 import 'habit_details_screen.dart'; 
 import '../models/habit_model.dart';
+
+
+
+class AlarmStatusCard extends StatefulWidget {
+  const AlarmStatusCard({super.key});
+
+  @override
+  State<AlarmStatusCard> createState() => _AlarmStatusCardState();
+}
+
+class _AlarmStatusCardState extends State<AlarmStatusCard> {
+  bool _isReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkStatus();
+  }
+
+  void _checkStatus() async {
+    bool ready = await NotificationService().isReadyForAlarms();
+    setState(() => _isReady = ready);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _isReady ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _isReady ? Colors.green : Colors.red),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _isReady ? Icons.check_circle : Icons.warning_rounded,
+            color: _isReady ? Colors.green : Colors.red,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isReady ? "System Ready" : "Alarms Throttled",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  _isReady 
+                    ? "Notifications will fire on time." 
+                    : "Tap to fix battery/alarm settings.",
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (!_isReady)
+            IconButton(
+              onPressed: () => NotificationService().requestPermissions(),
+              icon: const Icon(Icons.settings_suggest),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 class DashboardScreen extends StatefulWidget {
   final String userName;
@@ -23,6 +91,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final DashboardController _controller = DashboardController();
+  final NotificationService _notificationService = NotificationService();
+
   List<Map<String, dynamic>> _allHabits = [];
   String? _displayName;
   int _navIndex = 0;
@@ -93,25 +163,61 @@ void initState() {
   }
 }
 
+  
   Future<void> _refreshData({bool silent = false}) async {
     if (!mounted) return;
-    
-    // Only show the full screen loader if NOT a silent refresh
-    if (!silent) {
-      setState(() => _isLoading = true);
-    }
+    if (!silent) setState(() => _isLoading = true);
 
-    final name = await _controller.getUserName();
+    // Fetch the habits for the selected date
     final habits = await _controller.getHabitsWithLogs(date: _selectedDate);
 
     if (mounted) {
       setState(() {
-        if (name != null) _displayName = name;
         _allHabits = habits;
-        _isLoading = false; // Always ensure loader is off after data arrives
+        _isLoading = false;
       });
+
+      final now = DateTime.now();
+      
+      // Only sync alarms if we are actually looking at 'Today' in the UI
+      bool isToday = _selectedDate.year == now.year && 
+                     _selectedDate.month == now.month && 
+                     _selectedDate.day == now.day;
+
+      if (isToday) {
+        debugPrint("HabitHero: Syncing active alarms for today...");
+        
+        for (var habit in habits) {
+          final String? timeStr = habit['reminderTime'];
+          final bool isCompleted = habit['isCompleted'] == 1;
+          
+          // Only schedule if: Not completed, has a time, and format is valid
+          if (!isCompleted && timeStr != null && timeStr.contains(':')) {
+            try {
+              final parts = timeStr.split(':');
+              final int hour = int.parse(parts[0]);
+              final int minute = int.parse(parts[1]);
+
+              // Schedule the reminder (our Service handles the "Grace Period")
+              _notificationService.scheduleHabitReminder(
+                habit['id'], 
+                habit['title'], 
+                hour, 
+                minute
+              );
+            } catch (e) {
+              debugPrint("SYNC ERROR for ${habit['title']}: $e");
+            }
+          } else if (isCompleted) {
+            // If the user checked it off, cancel any pending alarm for today
+            _notificationService.cancelReminder(habit['id']);
+          }
+        }
+      }
     }
   }
+
+  
 
   String _getCurrentTimeframe() {
     final int hour = DateTime.now().hour;
@@ -468,15 +574,18 @@ Widget build(BuildContext context) {
     return getPriority(a['timeOfDay']).compareTo(getPriority(b['timeOfDay']));
   });
 
-  final uncompletedHabits = filteredHabits.where((h) {
-    if (h['isCompleted'] == true) return false;
-    if (!isToday) return true;
-    String habitTime = h['timeOfDay']?.toString() ?? "Morning";
-    if (currentTimeframe == "Afternoon" && habitTime == "Morning") return false;
-    if (currentTimeframe == "Evening" && (habitTime == "Morning" || habitTime == "Afternoon")) return false;
-    if (currentTimeframe == "Night") return false;
-    return true;
-  }).toList();
+ final uncompletedHabits = filteredHabits.where((h) {
+  // 1. If it's done, it's not uncompleted.
+  if (h['isCompleted'] == true) return false;
+  
+  // 2. If we are looking at a past day, it's already "processed."
+  if (isPastDay) return false;
+
+  // 3. For Today: Keep it visible until the day is over.
+  // We remove the currentTimeframe "Morning/Afternoon" checks here
+  // so the user can still complete a Morning habit in the Evening.
+  return true; 
+}).toList();
 
   final nextTask = uncompletedHabits.isNotEmpty ? uncompletedHabits.first : null;
   final habitsInList = isToday

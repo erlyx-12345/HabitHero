@@ -2,32 +2,51 @@ import 'package:intl/intl.dart';
 import '../models/habit_model.dart';
 import '../services/habit_service.dart';
 import '../services/database_helper.dart';
+import '../services/notification_service.dart';
+import 'package:sqflite/sqflite.dart';
 
 class CreateHabitController {
   final HabitService _service = HabitService();
   final dbHelper = DatabaseHelper.instance;
+  final NotificationService _notificationService = NotificationService();
 
   Future<List<FocusArea>> fetchFocusAreas() async {
     return await _service.getFocusAreas();
   }
+Future<void> _syncNotification(
+  int id,
+  String title,
+  int reminderActive,
+  String? timeStr,
+) async {
 
-  bool _isTimeSlotPassed(String timeOfDay) {
-    final now = DateTime.now();
-    final hour = now.hour;
+  if (reminderActive == 1 && timeStr != null && timeStr.isNotEmpty) {
 
-    switch (timeOfDay.toLowerCase()) {
-      case 'morning':
-        return hour >= 12;
-      case 'afternoon':
-        return hour >= 17;
-      case 'evening':
-        return hour >= 22;
-      default:
-        return false;
+    try {
+
+      final parts = timeStr.split(':');
+
+      final int hour = int.parse(parts[0]);
+      final int minute = int.parse(parts[1]);
+
+      await _notificationService.scheduleHabitReminder(
+        id,
+        title,
+        hour,
+        minute,
+      );
+
+    } catch (e) {
+      print("Notification Sync Error: $e");
     }
-  }
 
-  // Updated to return Future<int> so we can get the ID for notifications
+  } else {
+
+    await _notificationService.cancelReminder(id);
+
+  }
+}
+
   Future<int> addCustomizedHabit({
     required String title,
     required String focusArea,
@@ -54,6 +73,9 @@ class CreateHabitController {
       'resistance': 50,
     });
 
+    // --- TRIGGER NOTIFICATION HERE ---
+    _syncNotification(habitId, title, reminder, reminderTime);
+
     if (_isTimeSlotPassed(timeOfDay)) {
       final String today = DateFormat('yyyy-MM-dd').format(DateTime.now());
       await db.insert('daily_logs', {
@@ -79,7 +101,7 @@ class CreateHabitController {
   }) async {
     final db = await dbHelper.database;
     
-    return await db.update(
+    int count = await db.update(
       'habits',
       {
         'title': title,
@@ -94,6 +116,35 @@ class CreateHabitController {
       where: 'id = ?',
       whereArgs: [id],
     );
+
+    // --- TRIGGER NOTIFICATION UPDATE HERE ---
+    // We cancel the old one and set the new one automatically
+    _syncNotification(id, title, reminder, reminderTime);
+
+    return count;
+  }
+
+  Future<void> deleteHabit(int habitId) async {
+    final db = await dbHelper.database;
+    
+    // Cancel the notification first so it doesn't fire for a deleted habit
+    await _notificationService.cancelReminder(habitId);
+    
+    await db.transaction((txn) async {
+      await txn.delete('daily_logs', where: 'habitId = ?', whereArgs: [habitId]);
+      await txn.delete('habits', where: 'id = ?', whereArgs: [habitId]);
+    });
+  }
+
+  bool _isTimeSlotPassed(String timeOfDay) {
+    final now = DateTime.now();
+    final hour = now.hour;
+    switch (timeOfDay.toLowerCase()) {
+      case 'morning': return hour >= 12;
+      case 'afternoon': return hour >= 17;
+      case 'evening': return hour >= 22;
+      default: return false;
+    }
   }
 
   Future<bool> doesHabitExist(String title, String timeOfDay) async {
@@ -104,13 +155,5 @@ class CreateHabitController {
       whereArgs: [title.trim().toLowerCase(), timeOfDay.trim().toLowerCase()],
     );
     return result.isNotEmpty;
-  }
-
-  Future<void> deleteHabit(int habitId) async {
-    final db = await dbHelper.database;
-    await db.transaction((txn) async {
-      await txn.delete('daily_logs', where: 'habitId = ?', whereArgs: [habitId]);
-      await txn.delete('habits', where: 'id = ?', whereArgs: [habitId]);
-    });
   }
 }
