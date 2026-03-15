@@ -163,6 +163,8 @@ class LabController {
   // This now calculates (Missed / Total) to show which habits are hardest for you.
  Future<List<Map<String, dynamic>>> getHabitDifficulty() async {
     final db = await dbHelper.database;
+    // We calculate (Missed Sessions / Total Sessions) * 100
+    // isCompleted = 0 or -1 counts as a failure/miss.
     return await db.rawQuery('''
       SELECT 
         h.id, 
@@ -172,16 +174,15 @@ class LabController {
         COUNT(l.id) as totalLogs,
         CASE 
           WHEN COUNT(l.id) > 0 
-          THEN (CAST(SUM(CASE WHEN l.isCompleted = 0 OR l.isCompleted = -1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(l.id)) * 100 
-          ELSE 0.0 
-        END as failureRate
+          THEN (CAST(SUM(CASE WHEN l.isCompleted <= 0 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(l.id)) * 100 
+          ELSE 100.0 
+        END as difficultyRate
       FROM habits h 
-      INNER JOIN daily_logs l ON h.id = l.habitId 
+      LEFT JOIN daily_logs l ON h.id = l.habitId 
       WHERE h.title IS NOT NULL 
       GROUP BY h.id 
-      HAVING totalLogs > 0
-      ORDER BY failureRate DESC 
-      LIMIT 3
+      ORDER BY difficultyRate DESC 
+      LIMIT 5
     ''');
   }
 

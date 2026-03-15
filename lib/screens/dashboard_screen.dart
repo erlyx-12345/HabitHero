@@ -29,6 +29,7 @@ class _AlarmStatusCardState extends State<AlarmStatusCard> {
   void initState() {
     super.initState();
     _checkStatus();
+    
   }
 
   void _checkStatus() async {
@@ -125,6 +126,7 @@ void initState() {
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   _displayName = widget.userName;
   _initAppData(); // This now handles the scroll internally
+  _fetchUserData();
 }
   void _scrollToToday({bool animated = true}) {
   if (!_dateScrollController.hasClients) return;
@@ -792,7 +794,7 @@ Widget build(BuildContext context) {
   );
 }
 
- Widget _buildHeader() {
+  Widget _buildHeader() {
   const Color primaryGreen = Color(0xFF10B981);
   const Color slate400 = Color(0xFF94A3B8);
   const Color slate900 = Color(0xFF0F172A);
@@ -801,12 +803,10 @@ Widget build(BuildContext context) {
     children: [
       GestureDetector(
         onTap: () async {
-          // Wait for the ProfileScreen to close
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const ProfileScreen()),
           );
-          // Call your fetch method to refresh the name and photo on the dashboard
           _fetchUserData();
         },
         child: Container(
@@ -822,7 +822,6 @@ Widget build(BuildContext context) {
           ),
           child: CircleAvatar(
             backgroundColor: primaryGreen.withOpacity(0.1),
-            // Use FileImage if _profilePath exists, otherwise fall back to NetworkImage
             backgroundImage: (_profilePath != null && _profilePath!.isNotEmpty)
                 ? FileImage(File(_profilePath!))
                 : const NetworkImage(
@@ -844,8 +843,8 @@ Widget build(BuildContext context) {
                 color: slate400,
               ),
             ),
-           Text(
-              _displayName ?? 'Hero', // Use 'Hero' if _displayName is null
+            Text(
+              _displayName ?? 'Hero',
               style: GoogleFonts.poppins(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,

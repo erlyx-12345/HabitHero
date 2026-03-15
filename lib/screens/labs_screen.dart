@@ -448,13 +448,15 @@ Widget _buildHeroCard() {
  
 
   Widget _buildDifficultyRow(Map<String, dynamic> data) {
-    double successRate = (data['successRate'] as num?)?.toDouble() ?? 0.0;
-    double difficultyRate = (100.0 - successRate).clamp(0.0, 100.0);
+    // Get difficulty directly from our reversed SQL query
+    double difficultyRate = (data['difficultyRate'] as num?)?.toDouble() ?? 0.0;
     int timesDone = data['completedCount'] ?? 0;
-    if (timesDone == 0 && successRate > 0) {
-      timesDone = (30 * (successRate / 100)).round();
-    }
-    Color barColor = Color(data['colorHex'] ?? 0xFF10B981);
+    int totalAttempts = data['totalLogs'] ?? 0;
+    
+    // Use the habit's custom color, or fallback to primaryGreen
+    Color habitColor = data['colorHex'] != null 
+        ? Color(int.parse(data['colorHex'].toString())) 
+        : primaryGreen;
 
     return GestureDetector(
       onTap: () => _showDiagnosticSheet(context, data),
@@ -484,11 +486,11 @@ Widget _buildHeroCard() {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: slate900,
+                    color: difficultyRate > 70 ? Colors.red[900] : slate900,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    "${difficultyRate.toInt()}% DIFF",
+                    "${difficultyRate.toInt()}% LOAD",
                     style: GoogleFonts.poppins(
                         fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
                   ),
@@ -507,15 +509,16 @@ Widget _buildHeroCard() {
                   ),
                 ),
                 FractionallySizedBox(
+                  // The bar now represents "Difficulty/Failure"
                   widthFactor: (difficultyRate / 100).clamp(0.05, 1.0),
                   child: Container(
                     height: 8,
                     decoration: BoxDecoration(
-                      color: barColor,
+                      color: habitColor,
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
                         BoxShadow(
-                          color: barColor.withOpacity(0.3),
+                          color: habitColor.withOpacity(0.3),
                           blurRadius: 6,
                           offset: const Offset(0, 2),
                         )
@@ -528,29 +531,17 @@ Widget _buildHeroCard() {
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.history_rounded, size: 12, color: slate500),
+                Icon(Icons.warning_amber_rounded, 
+                     size: 12, 
+                     color: difficultyRate > 50 ? Colors.orange : slate500),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      timesDone > 0
-                          ? "Consistency confirmed over $timesDone sessions"
-                          : "Baseline analysis in progress",
-                      style: GoogleFonts.poppins(
-                          fontSize: 11, color: slate500, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  difficultyRate > 70 ? "CRITICAL LOAD" : "STABLE UNIT",
-                  style: GoogleFonts.poppins(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: difficultyRate > 70 ? Colors.redAccent : primaryGreen,
-                    letterSpacing: 0.5,
+                  child: Text(
+                    difficultyRate == 100 
+                        ? "Critically neglected: 0% completion" 
+                        : "Missed ${totalAttempts - timesDone} out of $totalAttempts sessions",
+                    style: GoogleFonts.poppins(
+                        fontSize: 11, color: slate500, fontWeight: FontWeight.w500),
                   ),
                 ),
               ],
@@ -560,7 +551,6 @@ Widget _buildHeroCard() {
       ),
     );
   }
-
  
  void _showDiagnosticSheet(BuildContext context, Map<String, dynamic> data) async {
   final analysis = await _controller.getHabitAnalysis(data['id'] ?? 0);
