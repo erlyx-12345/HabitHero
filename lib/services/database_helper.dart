@@ -20,20 +20,20 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 8, // Bumped from 7 to 8
+      version: 9, 
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future<int> deleteCustomFocusArea(String name) async {
-  final db = await instance.database;
-  return await db.delete(
-    'custom_focus_areas',
-    where: 'name = ?',
-    whereArgs: [name],
-  );
-}
+    final db = await instance.database;
+    return await db.delete(
+      'custom_focus_areas',
+      where: 'name = ?',
+      whereArgs: [name],
+    );
+  }
 
   Future _createDB(Database db, int version) async {
     await db.execute('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
@@ -45,6 +45,7 @@ class DatabaseHelper {
         title TEXT NOT NULL,
         timeOfDay TEXT DEFAULT 'Anytime',
         endDate TEXT,
+        startDate TEXT,
         iconCode INTEGER,
         colorHex INTEGER,
         reminder INTEGER DEFAULT 0,
@@ -83,7 +84,6 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE habits ADD COLUMN reminderTime TEXT');
     }
     
-    // Logic for Version 7: Create the table if it didn't exist
     if (oldVersion < 7) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS custom_focus_areas (
@@ -95,19 +95,22 @@ class DatabaseHelper {
       ''');
     }
 
-    // Logic for Version 8: If the table existed but missed the column
     if (oldVersion < 8) {
-      // We use a try-catch or a check to ensure we don't crash if it's already there
       try {
         await db.execute('ALTER TABLE custom_focus_areas ADD COLUMN colorHex INTEGER');
       } catch (e) {
-        // Column might already exist, safe to ignore
-        print("Column colorHex already exists or table missing: $e");
+        print("Column colorHex already exists: $e");
+      }
+    }
+
+    if (oldVersion < 9) {
+      try {
+        await db.execute('ALTER TABLE habits ADD COLUMN startDate TEXT');
+      } catch (e) {
+        print("Column startDate already exists: $e");
       }
     }
   }
-
-  // --- FOCUS AREA METHODS ---
 
   Future<int> insertCustomFocusArea(String name, int iconCode, int colorHex) async {
     final db = await database;
@@ -122,8 +125,6 @@ class DatabaseHelper {
     final db = await instance.database;
     return await db.query('custom_focus_areas');
   }
-
-  // --- HABIT METHODS ---
 
   Future<List<Map<String, dynamic>>> getAllHabits() async {
     final db = await instance.database;

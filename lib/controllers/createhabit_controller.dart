@@ -56,46 +56,50 @@ Future<void> _syncNotification(
   }
 }
 
-  Future<int> addCustomizedHabit({
-    required String title,
-    required String focusArea,
-    required String timeOfDay,
-    required int iconCode,
-    required int colorHex,
-    required int reminder,
-    String? reminderTime,
-    String? endDate,
-  }) async {
-    final db = await dbHelper.database;
+ // Inside addCustomizedHabit in CreateHabitController.dart
 
-    final int habitId = await db.insert('habits', {
-      'focusArea': focusArea,
-      'title': title,
-      'timeOfDay': timeOfDay,
-      'iconCode': iconCode,
-      'colorHex': colorHex,
-      'reminder': reminder,
-      'reminderTime': reminderTime,
-      'endDate': endDate,
-      'currentTier': 1,
-      'streak': 0,
-      'resistance': 50,
-    });
+ Future<int> addCustomizedHabit({
+  required String title,
+  required String focusArea,
+  required String timeOfDay,
+  required int iconCode,
+  required int colorHex,
+  required int reminder,
+  String? reminderTime,
+  String? endDate,
+  DateTime? customStartDate, 
+}) async {
+  final db = await dbHelper.database;
 
-    // --- TRIGGER NOTIFICATION HERE ---
-    _syncNotification(habitId, title, reminder, reminderTime);
-
-    if (_isTimeSlotPassed(timeOfDay)) {
-      final String today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      await db.insert('daily_logs', {
-        'habitId': habitId,
-        'date': today,
-        'isCompleted': -1,
-      });
-    }
-    
-    return habitId;
+  // If a custom date is passed (from the dashboard), use it exactly.
+  // Otherwise, use today.
+  DateTime startDateTime = customStartDate ?? DateTime.now();
+  
+  // Only auto-shift to tomorrow if NO specific date was selected from the dashboard
+  if (customStartDate == null && _isTimeSlotPassed(timeOfDay)) {
+    startDateTime = startDateTime.add(const Duration(days: 1));
   }
+  
+  final String formattedStartDate = DateFormat('yyyy-MM-dd').format(startDateTime);
+
+  final int habitId = await db.insert('habits', {
+    'focusArea': focusArea,
+    'title': title,
+    'timeOfDay': timeOfDay,
+    'iconCode': iconCode,
+    'colorHex': colorHex,
+    'reminder': reminder,
+    'reminderTime': reminderTime,
+    'endDate': endDate,
+    'startDate': formattedStartDate, 
+    'currentTier': 1,
+    'streak': 0,
+    'resistance': 50,
+  });
+
+  _syncNotification(habitId, title, reminder, reminderTime);
+  return habitId;
+}
 
   Future<int> updateHabit({
     required int id,

@@ -5,7 +5,12 @@ import '../models/habit_model.dart';
 import 'habit_details_screen.dart';
 
 class CreateHabitScreen extends StatefulWidget {
-  const CreateHabitScreen({super.key});
+  final DateTime? initialStartDate;
+
+  const CreateHabitScreen({
+    super.key,
+    this.initialStartDate,
+  });
 
   @override
   State<CreateHabitScreen> createState() => _CreateHabitScreenState();
@@ -162,75 +167,72 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
   }
 
   Widget _buildCategoryCard(FocusArea area) {
-  // Logic to identify built-in vs custom focus areas
-  final List<String> builtInNames = ["Fitness", "Productivity", "Mindfulness"];
-  final bool isBuiltIn = builtInNames.contains(area.name);
+    final List<String> builtInNames = ["Fitness", "Productivity", "Mindfulness"];
+    final bool isBuiltIn = builtInNames.contains(area.name);
 
-  return Container(
-    decoration: BoxDecoration(
-      color: cardWhite,
-      borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: borderStroke, width: 1.2),
-      boxShadow: [
-        BoxShadow(
-          color: deepNavy.withOpacity(0.02),
-          blurRadius: 15,
-          offset: const Offset(0, 8),
-        )
-      ],
-    ),
-    child: InkWell(
-      onTap: () => setState(() => _selectedArea = area),
-      // Long press and deletion are disabled for built-in categories
-      onLongPress: isBuiltIn ? null : () => _showDeleteConfirmation(area),
-      borderRadius: BorderRadius.circular(24),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  height: 44,
-                  width: 44,
-                  decoration: BoxDecoration(
-                    color: accentGreen.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(12),
+    return Container(
+      decoration: BoxDecoration(
+        color: cardWhite,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: borderStroke, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: deepNavy.withOpacity(0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          )
+        ],
+      ),
+      child: InkWell(
+        onTap: () => setState(() => _selectedArea = area),
+        onLongPress: isBuiltIn ? null : () => _showDeleteConfirmation(area),
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    height: 44,
+                    width: 44,
+                    decoration: BoxDecoration(
+                      color: accentGreen.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(area.icon, color: accentGreen, size: 22),
                   ),
-                  child: Icon(area.icon, color: accentGreen, size: 22),
+                  if (!isBuiltIn)
+                    Icon(Icons.more_vert_rounded, color: softText.withOpacity(0.5), size: 18),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                area.name,
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  color: deepNavy,
+                  fontSize: 15,
+                  height: 1.2,
                 ),
-                // Only show the menu icon if the category can be deleted
-                if (!isBuiltIn)
-                  Icon(Icons.more_vert_rounded, color: softText.withOpacity(0.5), size: 18),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              area.name,
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.w700,
-                color: deepNavy,
-                fontSize: 15,
-                height: 1.2,
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "${area.habits.length} options",
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                color: softText,
-                fontWeight: FontWeight.w500,
+              const SizedBox(height: 4),
+              Text(
+                "${area.habits.length} options",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  color: softText,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildAddCategoryCard() {
     return Container(
@@ -390,7 +392,6 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
           top: 12,
           left: 24,
           right: 24,
-          // Fixed bottom padding to lift it above the navigation bar
           bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 24,
         ),
         decoration: const BoxDecoration(

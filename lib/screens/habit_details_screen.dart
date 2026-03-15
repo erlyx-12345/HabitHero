@@ -9,12 +9,14 @@ class HabitDetailsScreen extends StatefulWidget {
   final HabitTemplate template;
   final String focusArea;
   final Map<String, dynamic>? existingHabit;
+  final DateTime? initialStartDate;
 
   const HabitDetailsScreen({
     super.key,
     required this.template,
     required this.focusArea,
     this.existingHabit,
+    this.initialStartDate,
   });
 
   @override
@@ -25,7 +27,6 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   final CreateHabitController _controller = CreateHabitController();
   final NotificationService _notificationService = NotificationService();
 
-  // Controllers & State
   late TextEditingController _titleController;
   late IconData _selectedIcon;
   late Color _selectedColor;
@@ -35,19 +36,17 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   dynamic _selectedTimePeriod;
   bool _isIconPickerExpanded = false;
 
-  // Expanded Luxury Palette
   final List<Color> _palette = [
-    const Color(0xFF10B981), // Emerald
-    const Color(0xFF064E3B), // Deep Emerald
-    const Color(0xFF3B82F6), // Blue
-    const Color(0xFF8B5CF6), // Violet
-    const Color(0xFFF43F5E), // Rose
-    const Color(0xFFF59E0B), // Amber
-    const Color(0xFF0F172A), // Slate
-    const Color(0xFF14B8A6), // Teal
+    const Color(0xFF10B981),
+    const Color(0xFF064E3B),
+    const Color(0xFF3B82F6),
+    const Color(0xFF8B5CF6),
+    const Color(0xFFF43F5E),
+    const Color(0xFFF59E0B),
+    const Color(0xFF0F172A),
+    const Color(0xFF14B8A6),
   ];
 
-  // Full Icon Library
   final List<IconData> _iconLibrary = [
     Icons.star_rounded, Icons.favorite_rounded, Icons.fitness_center_rounded, 
     Icons.book_rounded, Icons.water_drop_rounded, Icons.self_improvement_rounded, 
@@ -112,102 +111,98 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     return TimeOfDay.now();
   }
 
-@override
- Widget build(BuildContext context) {
-   final String timeLabel = _pickedReminderTime?.format(context) ?? "";
+  @override
+  Widget build(BuildContext context) {
+    final String timeLabel = _pickedReminderTime?.format(context) ?? "";
 
-   return Scaffold(
-     backgroundColor: Colors.white,
-     appBar: AppBar(
-       backgroundColor: Colors.white,
-       elevation: 0,
-       centerTitle: true,
-       title: Text(
-         isEditMode ? "EDIT HABIT" : "CUSTOMIZE",
-         style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8), letterSpacing: 1.5)
-       ),
-       leading: const BackButton(color: Color(0xFF0F172A))
-     ),
-     extendBody: true,
-     body: Column(
-       children: [
-         Expanded(
-           child: SingleChildScrollView(
-             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-             child: Column(
-               crossAxisAlignment: CrossAxisAlignment.start,
-               children: [
-                 _buildCustomNameInput(),
-                 const SizedBox(height: 32),
-                 _buildSectionLabel("VISUAL STYLE"),
-                 _buildExpandableIconPicker(),
-                 const SizedBox(height: 16),
-                 _buildColorPicker(),
-                 const SizedBox(height: 32),
-                 _buildSectionLabel("SCHEDULE"),
-                 _buildTimeOptions(),
-                 const SizedBox(height: 32),
-                 _buildSectionLabel("ADVANCED SETTINGS"),
-                 
-                 // RESTORED REMINDER LOGIC
-                 _buildSettingsToggle(
-                   _remindersEnabled ? "Reminder set for $timeLabel" : "Set a Reminder", 
-                   _remindersEnabled, 
-                   (v) async {
-                     if (v) {
-                       final TimeOfDay? picked = await showTimePicker(
-                         context: context,
-                         initialTime: _pickedReminderTime ?? _getDefaultStartTime(),
-                         helpText: "SELECT ${_selectedTimePeriod.toString().toUpperCase()} REMINDER",
-                       );
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          isEditMode ? "EDIT HABIT" : "CUSTOMIZE",
+          style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8), letterSpacing: 1.5)
+        ),
+        leading: const BackButton(color: Color(0xFF0F172A))
+      ),
+      extendBody: true,
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCustomNameInput(),
+                  const SizedBox(height: 32),
+                  _buildSectionLabel("VISUAL STYLE"),
+                  _buildExpandableIconPicker(),
+                  const SizedBox(height: 16),
+                  _buildColorPicker(),
+                  const SizedBox(height: 32),
+                  _buildSectionLabel("SCHEDULE"),
+                  _buildTimeOptions(),
+                  const SizedBox(height: 32),
+                  _buildSectionLabel("ADVANCED SETTINGS"),
+                  _buildSettingsToggle(
+                    _remindersEnabled ? "Reminder set for $timeLabel" : "Set a Reminder", 
+                    _remindersEnabled, 
+                    (v) async {
+                      if (v) {
+                        final TimeOfDay? picked = await showTimePicker(
+                          context: context,
+                          initialTime: _pickedReminderTime ?? _getDefaultStartTime(),
+                          helpText: "SELECT ${_selectedTimePeriod.toString().toUpperCase()} REMINDER",
+                        );
 
-                       if (picked != null) {
-                         if (_isValidTimeSelection(picked)) {
-                           setState(() {
-                             _remindersEnabled = true;
-                             _pickedReminderTime = picked;
-                           });
-                         } else {
-                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                             content: Text("Please pick a time within the '$_selectedTimePeriod' range."),
-                             backgroundColor: Colors.redAccent,
-                           ));
-                         }
-                       }
-                     } else {
-                       setState(() {
-                         _remindersEnabled = false;
-                         _pickedReminderTime = null;
-                       });
-                     }
-                   }
-                 ),
+                        if (picked != null) {
+                          if (_isValidTimeSelection(picked)) {
+                            setState(() {
+                              _remindersEnabled = true;
+                              _pickedReminderTime = picked;
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text("Please pick a time within the '$_selectedTimePeriod' range."),
+                              backgroundColor: Colors.redAccent,
+                            ));
+                          }
+                        }
+                      } else {
+                        setState(() {
+                          _remindersEnabled = false;
+                          _pickedReminderTime = null;
+                        });
+                      }
+                    }
+                  ),
+                  const Divider(color: Color(0xFFF1F5F9), height: 32),
+                  _buildEndDateTile(),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
+          _buildSaveButtonAction(),
+        ],
+      ),
+    );
+  }
 
-                 const Divider(color: Color(0xFFF1F5F9), height: 32),
-                 _buildEndDateTile(),
-                 const SizedBox(height: 40),
-               ],
-             ),
-           ),
-         ),
-         _buildSaveButtonAction(),
-       ],
-     ),
-   );
- }
   Widget _buildSaveButtonAction() {
     return Container(
-      // SafeArea ensures the button isn't cut off by the home indicator/system nav
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 20), // Added bottom padding
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
           child: ElevatedButton(
             onPressed: _handleSaveProcess,
             style: ElevatedButton.styleFrom(
               backgroundColor: _selectedColor,
               foregroundColor: Colors.white,
-              // Removed fixed size to let it breathe, or use a specific height
               minimumSize: const Size(double.infinity, 64), 
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
               elevation: 0,
@@ -221,6 +216,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
       ),
     );
   }
+
   Widget _buildCustomNameInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -345,8 +341,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     );
   }
 
-
-  Future<void> _handleSaveProcess() async {
+ Future<void> _handleSaveProcess() async {
     final String finalTitle = _titleController.text.trim();
     if (finalTitle.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Habit name cannot be empty")));
@@ -355,12 +350,19 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
 
     if (!isEditMode) {
       bool exists = await _controller.doesHabitExist(finalTitle, _selectedTimePeriod);
-      if (exists) { _showExistDialog(); return; }
+      if (exists) {
+        _showExistDialog();
+        return;
+      }
     }
 
     String? dbTime = _pickedReminderTime != null 
       ? "${_pickedReminderTime!.hour.toString().padLeft(2, '0')}:${_pickedReminderTime!.minute.toString().padLeft(2, '0')}" 
       : null;
+
+    final String? formattedEndDate = _endDate != null 
+        ? DateFormat('yyyy-MM-dd').format(_endDate!) 
+        : null;
 
     int? habitId; 
     try {
@@ -375,7 +377,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
           colorHex: _selectedColor.value,
           reminder: _remindersEnabled ? 1 : 0,
           reminderTime: dbTime,
-          endDate: _endDate?.toIso8601String(),
+          endDate: formattedEndDate,
         );
       } else {
         habitId = await _controller.addCustomizedHabit(
@@ -386,11 +388,11 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
           colorHex: _selectedColor.value,
           reminder: _remindersEnabled ? 1 : 0,
           reminderTime: dbTime,
-          endDate: _endDate?.toIso8601String(),
+          endDate: formattedEndDate,
+          customStartDate: widget.initialStartDate,
         );
       }
 
-      // Sync Alarms
       if (habitId != null && habitId != 0) {
         if (_remindersEnabled && _pickedReminderTime != null) {
           await _notificationService.scheduleHabitReminder(

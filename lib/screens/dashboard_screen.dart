@@ -564,34 +564,49 @@ Widget build(BuildContext context) {
   bool isToday = selectedDateOnly.isAtSameMomentAs(todayDateOnly);
   bool isPastDay = selectedDateOnly.isBefore(todayDateOnly);
 
-  final List<Map<String, dynamic>> filteredHabits = _allHabits.where((h) {
-  // 1. Time Filter Check
+ final List<Map<String, dynamic>> filteredHabits = _allHabits.where((h) {
+  // 1. Time Filter (Morning/Afternoon/Evening/All)
   bool matchesTime = _selectedTimeFilter == "All" || 
       (h['timeOfDay']?.toString().toLowerCase() == _selectedTimeFilter.toLowerCase());
 
-  // 2. End Date Check
-  bool isWithinRange = true;
-  if (h['endDate'] != null) {
-    try {
-      // Assuming endDate is stored as a String (e.g., "2026-04-30")
-      DateTime endDate = DateTime.parse(h['endDate'].toString());
-      
-      // Normalize both dates to midnight for accurate comparison
-      DateTime normalizedSelected = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-      DateTime normalizedEnd = DateTime(endDate.year, endDate.month, endDate.day);
+  // Normalize the date selected on the UI carousel to midnight
+  DateTime selectedDateOnly = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
 
-      // If the selected date is AFTER the end date, don't show it
-      if (normalizedSelected.isAfter(normalizedEnd)) {
-        isWithinRange = false;
+  // 2. Strict Start Date Check
+  bool hasStarted = true;
+  if (h['startDate'] != null) {
+    try {
+      // Parse the habit's start date from the database
+      DateTime dbStart = DateTime.parse(h['startDate'].toString());
+      DateTime normalizedStart = DateTime(dbStart.year, dbStart.month, dbStart.day);
+      
+      // If the date selected on the carousel is BEFORE the habit's start day, hide it
+      if (selectedDateOnly.isBefore(normalizedStart)) {
+        hasStarted = false;
       }
     } catch (e) {
-      debugPrint("Error parsing date: $e");
+      debugPrint("Error parsing startDate: $e");
     }
   }
 
-  return matchesTime && isWithinRange;
-}).toList();
+  // 3. End Date Check
+  bool isWithinRange = true;
+  if (h['endDate'] != null) {
+    try {
+      DateTime dbEnd = DateTime.parse(h['endDate'].toString());
+      DateTime normalizedEnd = DateTime(dbEnd.year, dbEnd.month, dbEnd.day);
+      
+      // If the date selected is AFTER the end day, hide it
+      if (selectedDateOnly.isAfter(normalizedEnd)) {
+        isWithinRange = false;
+      }
+    } catch (e) {
+      debugPrint("Error parsing endDate: $e");
+    }
+  }
 
+  return matchesTime && hasStarted && isWithinRange;
+}).toList();
  final uncompletedHabits = filteredHabits.where((h) {
   // 1. If it's done, it's not uncompleted.
   if (h['isCompleted'] == true) return false;
@@ -676,13 +691,18 @@ Widget build(BuildContext context) {
                 height: 48,
                 child: FloatingActionButton.extended(
                   heroTag: "newHabit",
+            
                   onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const CreateHabitScreen()),
-                    );
-                    if (result == true) _refreshData();
-                  },
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CreateHabitScreen(
+                            initialStartDate: _selectedDate, // Pass the date from your carousel
+                          ),
+                        ),
+                      );
+                      if (result == true) _refreshData();
+                    },
                   backgroundColor: deepEmerald,
                   elevation: 3,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
