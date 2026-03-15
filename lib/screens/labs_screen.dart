@@ -99,9 +99,6 @@ class _LabScreenState extends State<LabScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        _buildLabel("TIME OF DAY DISTRIBUTION"),
-                        const SizedBox(height: 16),
-                        _buildTimeComparison(),
                         const SizedBox(height: 32),
                         _buildLabel("DIFFICULTY INDEX (LOAD)"),
                         const SizedBox(height: 16),
@@ -146,146 +143,154 @@ class _LabScreenState extends State<LabScreen> {
     );
   }
 
-  Widget _buildHeroCard() {
-    const Color brandBlue = Color(0xFF4A6EDD);
-    const Color emeraldGreen = Color(0xFF10B981);
+Widget _buildHeroCard() {
+    const Color forestGreen = Color(0xFF2D6A4F);
+    const Color darkGreen = Color(0xFF1B4332);
+    const Color lightGreen = Color(0xFF52B788);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 1),
-      decoration: BoxDecoration(
-        color: brandBlue,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: brandBlue.withOpacity(0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          )
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -20,
-              top: -20,
-              child: Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.06),
+    return Transform.translate(
+      // Change -20 to a larger negative number like -40 if you want it even higher
+      offset: const Offset(0, -20), 
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 23),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [forestGreen, darkGreen],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: darkGreen.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            )
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: Stack(
+            children: [
+              Positioned(
+                right: -30,
+                top: -30,
+                child: Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.05),
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 3,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(1),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              "NEURAL LABS",
-                              style: GoogleFonts.poppins(
-                                color: Colors.white.withOpacity(0.7),
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              "${(_score * 100).toInt()}",
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 48,
-                                fontWeight: FontWeight.w800,
-                                height: 1,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              "%",
-                              style: GoogleFonts.poppins(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              const Icon(Icons.auto_graph_rounded, color: Colors.white, size: 14),
-                              const SizedBox(width: 6),
+                              Container(
+                                width: 3,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: lightGreen,
+                                  borderRadius: BorderRadius.circular(1),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               Text(
-                                "PERFORMANCE STABLE",
+                                "CONSISTENCY RATING",
                                 style: GoogleFonts.poppins(
-                                  color: Colors.white,
+                                  color: Colors.white.withOpacity(0.6),
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
+                                  letterSpacing: 1.2,
                                 ),
                               ),
                             ],
                           ),
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                "${(_score * 100).toInt()}",
+                                style: GoogleFonts.poppins(
+                                  color: Colors.white,
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                "%",
+                                style: GoogleFonts.poppins(
+                                  color: lightGreen,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.auto_graph_rounded, color: lightGreen, size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "STABLE",
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: CircularProgressIndicator(
+                            value: _score,
+                            strokeWidth: 8,
+                            backgroundColor: Colors.white.withOpacity(0.05),
+                            color: lightGreen,
+                            strokeCap: StrokeCap.round,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.bolt_rounded,
+                          color: lightGreen,
+                          size: 24,
                         ),
                       ],
                     ),
-                  ),
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        width: 85,
-                        height: 85,
-                        child: CircularProgressIndicator(
-                          value: _score,
-                          strokeWidth: 8,
-                          backgroundColor: Colors.white.withOpacity(0.1),
-                          color: Colors.white,
-                          strokeCap: StrokeCap.round,
-                        ),
-                      ),
-                      const Icon(
-                        Icons.bolt_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -440,91 +445,7 @@ class _LabScreenState extends State<LabScreen> {
     );
   }
 
-  Widget _buildTimeComparison() {
-    final categories = ["Morning", "Afternoon", "Evening"];
-    final Map<String, IconData> categoryIcons = {
-      "Morning": Icons.wb_sunny_rounded,
-      "Afternoon": Icons.wb_cloudy_rounded,
-      "Evening": Icons.dark_mode_rounded,
-    };
-
-    return Row(
-      children: categories.map((label) {
-        double value = _timeOfDayStats[label] ?? 0.0;
-        Color accentColor = value >= 0.8
-            ? const Color(0xFF1B4332)
-            : (value >= 0.5 ? Colors.orangeAccent : Colors.redAccent.withOpacity(0.8));
-
-        return Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                )
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(categoryIcons[label], size: 18, color: accentColor),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  "${(value * 100).toInt()}%",
-                  style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF2D3142),
-                      height: 1.1),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[400],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: 24,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: accentColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: value.clamp(0.1, 1.0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: accentColor,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
+ 
 
   Widget _buildDifficultyRow(Map<String, dynamic> data) {
     double successRate = (data['successRate'] as num?)?.toDouble() ?? 0.0;
