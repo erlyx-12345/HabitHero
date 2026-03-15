@@ -42,16 +42,19 @@ class _LabScreenState extends State<LabScreen> {
     _loadData();
   }
 
-  // Optimized load data to prevent screen flickering
   Future<void> _loadData({bool isBackground = false}) async {
-    if (!isBackground) {
-      setState(() => _isLoading = true);
-    }
+  if (!isBackground) {
+    setState(() => _isLoading = true);
+  }
 
-    // Use Future.wait to fetch all data in parallel for speed
+  try {
+    // 1. Force the controller to recalculate all streaks in the DB
+    await _controller.syncStreaks();
+
+    // 2. Fetch results (ensure getEliteHabits or a new getAllHabits is used)
     final results = await Future.wait([
       _controller.getCompletionRate(),
-      _controller.getEliteHabits(),
+      _controller.getEliteHabits(), // or _controller.getAllHabits() if streaks are 0
       _controller.getFilteredChartData(_activeTab),
       _controller.getMomentumScore(),
       _controller.getHabitDifficulty(),
@@ -71,7 +74,11 @@ class _LabScreenState extends State<LabScreen> {
         _isLoading = false;
       });
     }
+  } catch (e) {
+    debugPrint("Error loading analytics: $e");
+    if (mounted) setState(() => _isLoading = false);
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -564,11 +571,12 @@ Widget _buildMomentumBadge() {
     }).toList(),
   );
 }
+
  Widget _buildDifficultyRow(Map<String, dynamic> data) {
   // 1. Calculate Difficulty
   double successRate = (data['successRate'] as num?)?.toDouble() ?? 0.0;
   double difficultyRate = (100.0 - successRate).clamp(0.0, 100.0);
-  
+
   // 2. Times Done Logic
   int timesDone = data['completedCount'] ?? 0;
   if (timesDone == 0 && successRate > 0) {
@@ -577,116 +585,208 @@ Widget _buildMomentumBadge() {
 
   Color barColor = Color(data['colorHex'] ?? 0xFF10B981);
 
-  return Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20), // Reduced horizontal padding
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: slate100, width: 1.5),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                data['title'] ?? "Unknown Task",
-                overflow: TextOverflow.ellipsis, // Prevents long titles from breaking layout
-                style: GoogleFonts.poppins(
-                  fontSize: 15, 
-                  color: slate900, 
-                  fontWeight: FontWeight.bold
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: slate900,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                "${difficultyRate.toInt()}% DIFF",
-                style: GoogleFonts.poppins(
-                  fontSize: 10, 
-                  fontWeight: FontWeight.w900, 
-                  color: Colors.white
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Progress Bar
-        Stack(
-          children: [
-            Container(
-              height: 8,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: slate100,
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            FractionallySizedBox(
-              widthFactor: (difficultyRate / 100).clamp(0.05, 1.0),
-              child: Container(
-                height: 8,
-                decoration: BoxDecoration(
-                  color: barColor,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: barColor.withOpacity(0.3),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    )
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        // FIXED BOTTOM ROW: Added Expanded and FittedBox to prevent overflow
-        Row(
-          children: [
-            Icon(Icons.history_rounded, size: 12, color: slate500),
-            const SizedBox(width: 4),
-            Expanded(
-              child: FittedBox(
-                fit: BoxFit.scaleDown, // Shrinks text slightly if it hits the limit
-                alignment: Alignment.centerLeft,
+  return GestureDetector(
+    onTap: () => _showDiagnosticSheet(context, data), // Triggers the analysis sheet
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: slate100, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
                 child: Text(
-                  timesDone > 0 
-                      ? "Consistency confirmed over $timesDone sessions"
-                      : "Baseline analysis in progress",
+                  data['title'] ?? "Unknown Task",
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
-                    fontSize: 11, 
-                    color: slate500, 
-                    fontWeight: FontWeight.w500
+                    fontSize: 15,
+                    color: slate900,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8), // Buffer space
-            Text(
-              difficultyRate > 70 ? "CRITICAL LOAD" : "STABLE UNIT",
-              style: GoogleFonts.poppins(
-                fontSize: 9, 
-                fontWeight: FontWeight.w900, 
-                color: difficultyRate > 70 ? Colors.redAccent : primaryGreen,
-                letterSpacing: 0.5
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: slate900,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  "${difficultyRate.toInt()}% DIFF",
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Progress Bar
+          Stack(
+            children: [
+              Container(
+                height: 8,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: slate100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: (difficultyRate / 100).clamp(0.05, 1.0),
+                child: Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: barColor,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: barColor.withOpacity(0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Bottom Status Row
+          Row(
+            children: [
+              Icon(Icons.history_rounded, size: 12, color: slate500),
+              const SizedBox(width: 4),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    timesDone > 0
+                        ? "Consistency confirmed over $timesDone sessions"
+                        : "Baseline analysis in progress",
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      color: slate500,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                difficultyRate > 70 ? "CRITICAL LOAD" : "STABLE UNIT",
+                style: GoogleFonts.poppins(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  color: difficultyRate > 70 ? Colors.redAccent : primaryGreen,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     ),
+  );
+}
+
+void _showDiagnosticSheet(BuildContext context, Map<String, dynamic> data) async {
+  final analysis = await _controller.getHabitAnalysis(data['id'] ?? 0);
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) => Container(
+      height: MediaQuery.of(context).size.height * 0.6,
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F172A), // Slate 900
+        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+      ),
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4, 
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Text("DIAGNOSTIC REPORT", 
+            style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF10B981), letterSpacing: 2)),
+          const SizedBox(height: 8),
+          Text(data['title'], 
+            style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 24),
+          
+          // Friction Card
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 30),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Primary Friction Point", style: GoogleFonts.poppins(color: Colors.white60, fontSize: 12)),
+                    Text(analysis['frictionPoint'] ?? "Calculating...", 
+                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ],
+                )
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          Text("Behavioral Insight", style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(analysis['advice'] ?? "Keep tracking to see patterns.", 
+            style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14, height: 1.5)),
+            
+          const Spacer(),
+          
+          // Stats Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildSimpleStat("Missed (30d)", "${analysis['missedCount']}"),
+              _buildSimpleStat("Success Rate", "${analysis['completionRate']?.toInt()}%"),
+              _buildSimpleStat("Priority", "HIGH"),
+            ],
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildSimpleStat(String label, String value) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: GoogleFonts.poppins(color: Colors.white30, fontSize: 10, fontWeight: FontWeight.bold)),
+      Text(value, style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+    ],
   );
 }
 

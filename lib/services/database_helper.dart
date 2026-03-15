@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:intl/intl.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -65,4 +66,54 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE habits ADD COLUMN reminderTime TEXT');
     }
   }
+
+
+  // Add these inside your DatabaseHelper class
+
+Future<List<Map<String, dynamic>>> getAllHabits() async {
+  final db = await instance.database;
+  return await db.query('habits');
+}
+
+// FIX: This defines getCompletionRate for your controller
+Future<double> getCompletionRate({int days = 7}) async {
+  final db = await instance.database;
+  
+  // Calculate the date range
+  final now = DateTime.now();
+  final startDate = now.subtract(Duration(days: days));
+  final dateString = DateFormat('yyyy-MM-dd').format(startDate);
+
+  // Count how many completions exist in the last X days
+  final completedResult = await db.rawQuery('''
+    SELECT COUNT(*) as count FROM daily_logs 
+    WHERE isCompleted = 1 AND date >= ?
+  ''', [dateString]);
+
+  int completedCount = Sqflite.firstIntValue(completedResult) ?? 0;
+
+  // Count total habits to find the potential maximum completions
+  final habitCountResult = await db.rawQuery('SELECT COUNT(*) FROM habits');
+  int habitCount = Sqflite.firstIntValue(habitCountResult) ?? 0;
+
+  if (habitCount == 0) return 0.0;
+
+  // Calculate percentage: (Actual completions) / (Total possible completions)
+  double rate = completedCount / (habitCount * days);
+  return rate.clamp(0.0, 1.0); 
+}
+
+// Add this inside your DatabaseHelper class
+Future<List<Map<String, dynamic>>> getLogsForHabit(int habitId) async {
+  final db = await instance.database;
+  
+  // We order by date DESC so the most recent logs are at the top,
+  // matches the logic in your StreaksController
+  return await db.query(
+    'daily_logs',
+    where: 'habitId = ?',
+    whereArgs: [habitId],
+    orderBy: 'date DESC',
+  );
+}
 }

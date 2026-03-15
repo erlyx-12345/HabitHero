@@ -5,6 +5,7 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/labs_screen.dart';
+import 'screens/streaks_screen.dart'; // Import your new screen
 
 import 'services/database_helper.dart';
 import 'services/notification_service.dart';
@@ -54,6 +55,9 @@ class HabitHeroApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // We use a constant fallback to ensure the route builder doesn't fail
+    final String currentUserName = userName ?? "Hero";
+
     return MaterialApp(
       title: 'HabitHero',
       debugShowCheckedModeBanner: false,
@@ -67,8 +71,10 @@ class HabitHeroApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF8FAFB),
       ),
       home: startScreen,
+      // Registered routes matching your CustomNavBar logic
       routes: {
-        '/dashboard': (context) => DashboardScreen(userName: userName ?? "Hero"),
+        '/dashboard': (context) => DashboardScreen(userName: currentUserName),
+        '/streaks': (context) => const StreaksScreen(), // Added Streaks route
         '/labs': (context) => const LabScreen(),
       },
     );
