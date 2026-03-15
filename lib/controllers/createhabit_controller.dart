@@ -4,6 +4,7 @@ import '../services/habit_service.dart';
 import '../services/database_helper.dart';
 import '../services/notification_service.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter/material.dart';
 
 class CreateHabitController {
   final HabitService _service = HabitService();
@@ -13,6 +14,14 @@ class CreateHabitController {
   Future<List<FocusArea>> fetchFocusAreas() async {
     return await _service.getFocusAreas();
   }
+
+
+ // Change your method to this:
+Future<void> createCustomCategory(String name, int iconCode, int colorHex) async {
+  // Pass all THREE arguments to the dbHelper
+  await dbHelper.insertCustomFocusArea(name, iconCode, colorHex);
+}
+
 Future<void> _syncNotification(
   int id,
   String title,

@@ -20,11 +20,20 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 6, // Bumped version
+      version: 8, // Bumped from 7 to 8
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
+
+  Future<int> deleteCustomFocusArea(String name) async {
+  final db = await instance.database;
+  return await db.delete(
+    'custom_focus_areas',
+    where: 'name = ?',
+    whereArgs: [name],
+  );
+}
 
   Future _createDB(Database db, int version) async {
     await db.execute('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
@@ -58,62 +67,96 @@ class DatabaseHelper {
     ''');
 
     await db.execute('CREATE TABLE targets (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL UNIQUE)');
+
+    await db.execute('''
+      CREATE TABLE custom_focus_areas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        iconCode INTEGER,
+        colorHex INTEGER
+      )
+    ''');
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 6) {
-      // Add the reminderTime column if upgrading from older version
       await db.execute('ALTER TABLE habits ADD COLUMN reminderTime TEXT');
+    }
+    
+    // Logic for Version 7: Create the table if it didn't exist
+    if (oldVersion < 7) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS custom_focus_areas (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          iconCode INTEGER,
+          colorHex INTEGER
+        )
+      ''');
+    }
+
+    // Logic for Version 8: If the table existed but missed the column
+    if (oldVersion < 8) {
+      // We use a try-catch or a check to ensure we don't crash if it's already there
+      try {
+        await db.execute('ALTER TABLE custom_focus_areas ADD COLUMN colorHex INTEGER');
+      } catch (e) {
+        // Column might already exist, safe to ignore
+        print("Column colorHex already exists or table missing: $e");
+      }
     }
   }
 
+  // --- FOCUS AREA METHODS ---
 
-  // Add these inside your DatabaseHelper class
+  Future<int> insertCustomFocusArea(String name, int iconCode, int colorHex) async {
+    final db = await database;
+    return await db.insert('custom_focus_areas', {
+      'name': name,
+      'iconCode': iconCode,
+      'colorHex': colorHex, 
+    });
+  }
 
-Future<List<Map<String, dynamic>>> getAllHabits() async {
-  final db = await instance.database;
-  return await db.query('habits');
-}
+  Future<List<Map<String, dynamic>>> getCustomFocusAreas() async {
+    final db = await instance.database;
+    return await db.query('custom_focus_areas');
+  }
 
-// FIX: This defines getCompletionRate for your controller
-Future<double> getCompletionRate({int days = 7}) async {
-  final db = await instance.database;
-  
-  // Calculate the date range
-  final now = DateTime.now();
-  final startDate = now.subtract(Duration(days: days));
-  final dateString = DateFormat('yyyy-MM-dd').format(startDate);
+  // --- HABIT METHODS ---
 
-  // Count how many completions exist in the last X days
-  final completedResult = await db.rawQuery('''
-    SELECT COUNT(*) as count FROM daily_logs 
-    WHERE isCompleted = 1 AND date >= ?
-  ''', [dateString]);
+  Future<List<Map<String, dynamic>>> getAllHabits() async {
+    final db = await instance.database;
+    return await db.query('habits');
+  }
 
-  int completedCount = Sqflite.firstIntValue(completedResult) ?? 0;
+  Future<double> getCompletionRate({int days = 7}) async {
+    final db = await instance.database;
+    final now = DateTime.now();
+    final startDate = now.subtract(Duration(days: days));
+    final dateString = DateFormat('yyyy-MM-dd').format(startDate);
 
-  // Count total habits to find the potential maximum completions
-  final habitCountResult = await db.rawQuery('SELECT COUNT(*) FROM habits');
-  int habitCount = Sqflite.firstIntValue(habitCountResult) ?? 0;
+    final completedResult = await db.rawQuery('''
+      SELECT COUNT(*) as count FROM daily_logs 
+      WHERE isCompleted = 1 AND date >= ?
+    ''', [dateString]);
 
-  if (habitCount == 0) return 0.0;
+    int completedCount = Sqflite.firstIntValue(completedResult) ?? 0;
+    final habitCountResult = await db.rawQuery('SELECT COUNT(*) FROM habits');
+    int habitCount = Sqflite.firstIntValue(habitCountResult) ?? 0;
 
-  // Calculate percentage: (Actual completions) / (Total possible completions)
-  double rate = completedCount / (habitCount * days);
-  return rate.clamp(0.0, 1.0); 
-}
+    if (habitCount == 0) return 0.0;
+    double rate = completedCount / (habitCount * days);
+    return rate.clamp(0.0, 1.0); 
+  }
 
-// Add this inside your DatabaseHelper class
-Future<List<Map<String, dynamic>>> getLogsForHabit(int habitId) async {
-  final db = await instance.database;
-  
-  // We order by date DESC so the most recent logs are at the top,
-  // matches the logic in your StreaksController
-  return await db.query(
-    'daily_logs',
-    where: 'habitId = ?',
-    whereArgs: [habitId],
-    orderBy: 'date DESC',
-  );
-}
+  Future<List<Map<String, dynamic>>> getLogsForHabit(int habitId) async {
+    final db = await instance.database;
+    return await db.query(
+      'daily_logs',
+      where: 'habitId = ?',
+      whereArgs: [habitId],
+      orderBy: 'date DESC',
+    );
+  }
 }
