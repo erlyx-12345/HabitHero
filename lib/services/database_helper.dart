@@ -20,7 +20,7 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 9, 
+      version: 10, 
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -36,7 +36,7 @@ class DatabaseHelper {
   }
 
   Future _createDB(Database db, int version) async {
-    await db.execute('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
+    await db.execute('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, profilePath TEXT)');
 
     await db.execute('''
       CREATE TABLE habits (
@@ -110,6 +110,24 @@ class DatabaseHelper {
         print("Column startDate already exists: $e");
       }
     }
+
+    if (oldVersion < 10) {
+      try {
+        await db.execute('ALTER TABLE users ADD COLUMN profilePath TEXT');
+      } catch (e) {
+        print("Column profilePath already exists: $e");
+      }
+    }
+  }
+
+  Future<int> updateUserProfile(String name, String? imagePath) async {
+    final db = await database;
+    return await db.update(
+      'users',
+      {'name': name, 'profilePath': imagePath},
+      where: 'id = ?',
+      whereArgs: [1],
+    );
   }
 
   Future<int> insertCustomFocusArea(String name, int iconCode, int colorHex) async {

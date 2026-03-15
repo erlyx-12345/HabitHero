@@ -9,6 +9,9 @@ import 'create_habit_screen.dart';
 import 'habit_details_screen.dart'; 
 import '../models/habit_model.dart';
 import '../controllers/labs_controller.dart'; // Assuming your file is named lab_controller.dart
+import '../controllers/profile_controller.dart'; 
+import 'profile_screen.dart';
+import 'dart:io';
 
 
 
@@ -93,6 +96,8 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final DashboardController _controller = DashboardController();
   final NotificationService _notificationService = NotificationService();
+  final ProfileController _profileController = ProfileController(); // Add this
+  String? _profilePath;
 
   List<Map<String, dynamic>> _allHabits = [];
   String? _displayName;
@@ -166,6 +171,7 @@ Future<void> _initAppData() async {
     });
   }
 }
+
 
   
  Future<void> _refreshData({bool silent = false}) async {
@@ -786,36 +792,84 @@ Widget build(BuildContext context) {
   );
 }
 
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        Container(
-          width: 44,
-          height: 44,
+ Widget _buildHeader() {
+  const Color primaryGreen = Color(0xFF10B981);
+  const Color slate400 = Color(0xFF94A3B8);
+  const Color slate900 = Color(0xFF0F172A);
+
+  return Row(
+    children: [
+      GestureDetector(
+        onTap: () async {
+          // Wait for the ProfileScreen to close
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ProfileScreen()),
+          );
+          // Call your fetch method to refresh the name and photo on the dashboard
+          _fetchUserData();
+        },
+        child: Container(
+          width: 52,
+          height: 52,
+          padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: primaryGreen.withOpacity(0.2), width: 2),
-            image: const DecorationImage(
-              image: NetworkImage("https://ui-avatars.com/api/?name=Marl+Laurence&background=10B981&color=fff"),
-              fit: BoxFit.cover,
+            border: Border.all(
+              color: primaryGreen.withOpacity(0.2),
+              width: 2,
             ),
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Good Morning,", style: GoogleFonts.poppins(fontSize: 14, color: slate400)),
-              Text(_displayName ?? 'Marl',
-                  style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w700, color: slate900)),
-            ],
+          child: CircleAvatar(
+            backgroundColor: primaryGreen.withOpacity(0.1),
+            // Use FileImage if _profilePath exists, otherwise fall back to NetworkImage
+            backgroundImage: (_profilePath != null && _profilePath!.isNotEmpty)
+                ? FileImage(File(_profilePath!))
+                : const NetworkImage(
+                    "https://ui-avatars.com/api/?name=User&background=10B981&color=fff",
+                  ) as ImageProvider,
           ),
         ),
-        _buildProgressRing(),
-      ],
-    );
+      ),
+      const SizedBox(width: 14),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Welcome back,",
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: slate400,
+              ),
+            ),
+           Text(
+              _displayName ?? 'Hero', // Use 'Hero' if _displayName is null
+              style: GoogleFonts.poppins(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: slate900,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+      _buildProgressRing(),
+    ],
+  );
+}
+
+Future<void> _fetchUserData() async {
+  final userData = await ProfileController.fetchUserData();
+  if (userData != null && mounted) {
+    setState(() {
+      _displayName = userData['name'];
+      _profilePath = userData['profilePath'];
+    });
   }
+}
 
   Widget _buildProgressRing() {
     double progress = _controller.calculateProgress(_allHabits);
