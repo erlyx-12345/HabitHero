@@ -116,77 +116,66 @@ class _LabScreenState extends State<LabScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 3,
-              height: 12,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B4332),
-                borderRadius: BorderRadius.circular(1),
-              ),
+ Widget _buildHeader() {
+    return Padding(
+      // Top 60 keeps it below the status bar, Left 24 aligns with your cards
+      padding: const EdgeInsets.fromLTRB(1, 1, 15, 20), 
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Performance",
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F172A),
+              fontSize: 28,
+              letterSpacing: -0.5,
             ),
-            const SizedBox(width: 8),
-            Text(
-              "NEURAL LABS",
-              style: GoogleFonts.poppins(
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[400],
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          "Habit Performance",
-          style: GoogleFonts.poppins(
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF1A1A1A),
-            letterSpacing: -0.4,
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            "Your habit consistency overview",
+            style: GoogleFonts.poppins(
+              color: const Color(0xFF94A3B8),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildHeroCard() {
-    const Color obsidianBlack = Color(0xFF000000);
-    const Color emeraldGreen = Color(0xFF2ECC71);
+    const Color brandBlue = Color(0xFF4A6EDD);
+    const Color emeraldGreen = Color(0xFF10B981);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      constraints: const BoxConstraints(minHeight: 140),
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 1),
       decoration: BoxDecoration(
-        color: obsidianBlack,
-        borderRadius: BorderRadius.circular(24),
+        color: brandBlue,
+        borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: brandBlue.withOpacity(0.35),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           )
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(32),
         child: Stack(
           children: [
             Positioned(
-              right: -30,
-              top: -30,
+              right: -20,
+              top: -20,
               child: Container(
-                width: 120,
-                height: 120,
+                width: 140,
+                height: 140,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: emeraldGreen.withOpacity(0.04),
+                  color: Colors.white.withOpacity(0.06),
                 ),
               ),
             ),
@@ -196,19 +185,31 @@ class _LabScreenState extends State<LabScreen> {
                 children: [
                   Expanded(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          "AVERAGE CONSISTENCY",
-                          style: GoogleFonts.poppins(
-                            color: Colors.white.withOpacity(0.3),
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.2,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              width: 3,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(1),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "NEURAL LABS",
+                              style: GoogleFonts.poppins(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 8),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.baseline,
                           textBaseline: TextBaseline.alphabetic,
@@ -216,43 +217,42 @@ class _LabScreenState extends State<LabScreen> {
                             Text(
                               "${(_score * 100).toInt()}",
                               style: GoogleFonts.poppins(
-                                color: emeraldGreen,
-                                fontSize: 42,
-                                fontWeight: FontWeight.w600,
-                                height: 1.1,
+                                color: Colors.white,
+                                fontSize: 48,
+                                fontWeight: FontWeight.w800,
+                                height: 1,
                               ),
                             ),
                             const SizedBox(width: 4),
                             Text(
                               "%",
                               style: GoogleFonts.poppins(
-                                color: emeraldGreen.withOpacity(0.4),
-                                fontSize: 18,
-                                fontWeight: FontWeight.w400,
+                                color: Colors.white.withOpacity(0.5),
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: emeraldGreen.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: emeraldGreen.withOpacity(0.15)),
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.auto_graph_rounded, color: emeraldGreen, size: 12),
+                              const Icon(Icons.auto_graph_rounded, color: Colors.white, size: 14),
                               const SizedBox(width: 6),
                               Text(
                                 "PERFORMANCE STABLE",
                                 style: GoogleFonts.poppins(
-                                  color: emeraldGreen,
+                                  color: Colors.white,
                                   fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.3,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ],
@@ -261,24 +261,23 @@ class _LabScreenState extends State<LabScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
                   Stack(
                     alignment: Alignment.center,
                     children: [
                       SizedBox(
-                        width: 75,
-                        height: 75,
+                        width: 85,
+                        height: 85,
                         child: CircularProgressIndicator(
                           value: _score,
-                          strokeWidth: 4,
-                          backgroundColor: Colors.white.withOpacity(0.05),
-                          color: emeraldGreen,
+                          strokeWidth: 8,
+                          backgroundColor: Colors.white.withOpacity(0.1),
+                          color: Colors.white,
                           strokeCap: StrokeCap.round,
                         ),
                       ),
-                      Icon(
+                      const Icon(
                         Icons.bolt_rounded,
-                        color: emeraldGreen.withOpacity(0.2),
+                        color: Colors.white,
                         size: 24,
                       ),
                     ],
@@ -641,90 +640,199 @@ class _LabScreenState extends State<LabScreen> {
     );
   }
 
-  void _showDiagnosticSheet(BuildContext context, Map<String, dynamic> data) async {
-    final analysis = await _controller.getHabitAnalysis(data['id'] ?? 0);
-    if (!mounted) return;
+ 
+ void _showDiagnosticSheet(BuildContext context, Map<String, dynamic> data) async {
+  final analysis = await _controller.getHabitAnalysis(data['id'] ?? 0);
+  if (!mounted) return;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: const BoxDecoration(
-          color: Color(0xFF0F172A),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-        ),
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (context) {
+      final double systemBottom = MediaQuery.of(context).padding.bottom;
+      
+      return Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
+          ),
+          padding: EdgeInsets.fromLTRB(24, 12, 24, systemBottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: slate100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 32),
-            Text("DIAGNOSTIC REPORT",
-                style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF10B981), letterSpacing: 2)),
-            const SizedBox(height: 8),
-            Text(data['title'],
-                style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 30),
-                  const SizedBox(width: 16),
-                  Column(
+              const SizedBox(height: 28),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Primary Friction Point", style: GoogleFonts.poppins(color: Colors.white60, fontSize: 12)),
-                      Text(analysis['frictionPoint'] ?? "Calculating...",
-                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(
+                        "NEURAL DIAGNOSTIC",
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: primaryGreen,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        data['title'] ?? 'Analysis',
+                        style: GoogleFonts.poppins(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: slate900,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: bgLight,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: slate100),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.orangeAccent.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.bolt_rounded,
+                                color: Colors.orangeAccent,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Friction Point",
+                                    style: GoogleFonts.poppins(
+                                      color: slate500,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    analysis['frictionPoint'] ?? "Analyzing Patterns...",
+                                    style: GoogleFonts.poppins(
+                                      color: slate900,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Text(
+                        "Analysis Summary",
+                        style: GoogleFonts.poppins(
+                          color: slate900,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        analysis['advice'] ?? "Your habit consistency is being tracked for deeper insights.",
+                        style: GoogleFonts.poppins(
+                          color: slate500,
+                          fontSize: 14,
+                          height: 1.6,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 2.2,
+                        children: [
+                          _buildGridStat("Consistency", "${(analysis['completionRate'] ?? 0).toInt()}%", Icons.shutter_speed_rounded),
+                          _buildGridStat("Frequency", "${analysis['missedCount'] ?? 0} Missed", Icons.calendar_today_rounded),
+                        ],
+                      ),
                     ],
-                  )
-                ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildGridStat(String label, String value, IconData icon) {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: slate900,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, color: Colors.white.withOpacity(0.5), size: 18),
+        const SizedBox(width: 12),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                color: Colors.white.withOpacity(0.4),
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 20),
-            Text("Behavioral Insight", style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(analysis['advice'] ?? "Keep tracking to see patterns.",
-                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14, height: 1.5)),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildSimpleStat("Missed (30d)", "${analysis['missedCount']}"),
-                _buildSimpleStat("Success Rate", "${analysis['completionRate']?.toInt()}%"),
-                _buildSimpleStat("Priority", "HIGH"),
-              ],
+            Text(
+              value,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 20),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSimpleStat(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: GoogleFonts.poppins(color: Colors.white30, fontSize: 10, fontWeight: FontWeight.bold)),
-        Text(value, style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
       ],
-    );
-  }
-
+    ),
+  );
+}
   Widget _buildLabel(String s) => Text(s,
       style: GoogleFonts.poppins(
           fontSize: 10, fontWeight: FontWeight.w900, color: slate500, letterSpacing: 2));

@@ -60,7 +60,7 @@ class _StreaksScreenState extends State<StreaksScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Performance",
+            "Streaks",
             style: GoogleFonts.poppins(
               fontWeight: FontWeight.w800, 
               color: slate900, 
