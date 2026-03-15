@@ -16,7 +16,6 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
   FocusArea? _selectedArea;
   late Future<List<FocusArea>> _focusAreasFuture;
 
-  // Professional Color Palette
   final Color accentGreen = const Color(0xFF10B981);
   final Color deepNavy = const Color(0xFF0F172A);
   final Color softText = const Color(0xFF64748B);
@@ -36,7 +35,6 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
     });
   }
 
-  /// Modern floating SnackBar for feedback and errors
   void _showModernSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -164,9 +162,9 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
   }
 
   Widget _buildCategoryCard(FocusArea area) {
-  // We check if it's a custom area. 
-  // (Assuming your HabitService identifies custom areas vs built-in ones)
-  final bool isCustom = area.habits.isEmpty || area.name != "Fitness"; // Simplified logic
+  // Logic to identify built-in vs custom focus areas
+  final List<String> builtInNames = ["Fitness", "Productivity", "Mindfulness"];
+  final bool isBuiltIn = builtInNames.contains(area.name);
 
   return Container(
     decoration: BoxDecoration(
@@ -183,7 +181,8 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
     ),
     child: InkWell(
       onTap: () => setState(() => _selectedArea = area),
-      onLongPress: () => _showDeleteConfirmation(area), // Trigger delete
+      // Long press and deletion are disabled for built-in categories
+      onLongPress: isBuiltIn ? null : () => _showDeleteConfirmation(area),
       borderRadius: BorderRadius.circular(24),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -202,7 +201,8 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                   ),
                   child: Icon(area.icon, color: accentGreen, size: 22),
                 ),
-                if (isCustom) 
+                // Only show the menu icon if the category can be deleted
+                if (!isBuiltIn)
                   Icon(Icons.more_vert_rounded, color: softText.withOpacity(0.5), size: 18),
               ],
             ),
@@ -381,79 +381,91 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
   }
 
   void _showDeleteConfirmation(FocusArea area) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    builder: (context) => Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(color: borderStroke, borderRadius: BorderRadius.circular(2)),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            "Delete Focus Area?",
-            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 18, color: deepNavy),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            "This will remove the '${area.name}' category. Habits already created with this focus won't be deleted.",
-            textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(color: softText, fontSize: 14, height: 1.5),
-          ),
-          const SizedBox(height: 32),
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text("CANCEL", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: softText)),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEF4444), // Danger Red
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.only(
+          top: 12,
+          left: 24,
+          right: 24,
+          // Fixed bottom padding to lift it above the navigation bar
+          bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 24,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: borderStroke, borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "Delete Focus Area?",
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 18, color: deepNavy),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "This will remove the '${area.name}' category. Habits already created with this focus won't be deleted.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(color: softText, fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text("CANCEL", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: softText)),
                   ),
-                  onPressed: () async {
-                    // Note: You'll need to add deleteCustomFocusArea to your controller
-                    await _controller.dbHelper.deleteCustomFocusArea(area.name); 
-                    if (mounted) {
-                      Navigator.pop(context);
-                      _refreshFocusAreas();
-                      _showModernSnackBar("Focus area deleted");
-                    }
-                  },
-                  child: Text("DELETE", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: Colors.white)),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF4444),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onPressed: () async {
+                      await _controller.dbHelper.deleteCustomFocusArea(area.name);
+                      if (mounted) {
+                        Navigator.pop(context);
+                        _refreshFocusAreas();
+                        _showModernSnackBar("Focus area deleted");
+                      }
+                    },
+                    child: Text("DELETE", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _showNewCategoryDialog() {
     final nameController = TextEditingController();
     int selectedIconCode = Icons.category_rounded.codePoint;
 
     final List<IconData> availableIcons = [
-      Icons.category_rounded, Icons.fitness_center, Icons.code, Icons.book,
-      Icons.brush, Icons.attach_money, Icons.favorite, Icons.self_improvement
+      Icons.category_rounded,
+      Icons.fitness_center,
+      Icons.code,
+      Icons.book,
+      Icons.brush,
+      Icons.attach_money,
+      Icons.favorite,
+      Icons.self_improvement
     ];
 
     showModalBottomSheet(
@@ -463,8 +475,10 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Container(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-            left: 24, right: 24, top: 12
+            bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 24,
+            left: 24,
+            right: 24,
+            top: 12,
           ),
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -478,32 +492,53 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                 child: Container(
                   width: 36,
                   height: 4,
-                  decoration: BoxDecoration(color: borderStroke, borderRadius: BorderRadius.circular(2))
-                )
+                  decoration: BoxDecoration(
+                    color: borderStroke,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               Text(
                 "Create Custom Focus",
-                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 20, color: deepNavy)
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  color: deepNavy,
+                ),
               ),
               const SizedBox(height: 20),
               TextField(
                 controller: nameController,
                 autofocus: true,
-                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, color: deepNavy),
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w600,
+                  color: deepNavy,
+                ),
                 decoration: InputDecoration(
                   hintText: "Focus Name (e.g. Wellness)",
-                  hintStyle: GoogleFonts.plusJakartaSans(color: softText, fontWeight: FontWeight.w500),
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    color: softText,
+                    fontWeight: FontWeight.w500,
+                  ),
                   filled: true,
                   fillColor: bgSurface,
                   contentPadding: const EdgeInsets.all(18),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
               Text(
                 "SELECT ICON",
-                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 11, color: softText, letterSpacing: 1)
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                  color: softText,
+                  letterSpacing: 1,
+                ),
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -513,19 +548,24 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                   physics: const BouncingScrollPhysics(),
                   itemCount: availableIcons.length,
                   itemBuilder: (context, i) => GestureDetector(
-                    onTap: () => setModalState(() => selectedIconCode = availableIcons[i].codePoint),
+                    onTap: () => setModalState(
+                        () => selectedIconCode = availableIcons[i].codePoint),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       margin: const EdgeInsets.only(right: 12),
                       width: 56,
                       decoration: BoxDecoration(
-                        color: selectedIconCode == availableIcons[i].codePoint ? deepNavy : bgSurface,
+                        color: selectedIconCode == availableIcons[i].codePoint
+                            ? deepNavy
+                            : bgSurface,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: borderStroke),
                       ),
                       child: Icon(
                         availableIcons[i],
-                        color: selectedIconCode == availableIcons[i].codePoint ? Colors.white : softText
+                        color: selectedIconCode == availableIcons[i].codePoint
+                            ? Colors.white
+                            : softText,
                       ),
                     ),
                   ),
@@ -538,14 +578,17 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: deepNavy,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                    elevation: 0
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    elevation: 0,
                   ),
                   onPressed: () async {
                     final name = nameController.text.trim();
-                    
+
                     if (name.isEmpty) {
-                      _showModernSnackBar("Please enter a focus name", isError: true);
+                      _showModernSnackBar("Please enter a focus name",
+                          isError: true);
                       return;
                     }
 
@@ -555,7 +598,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                         selectedIconCode,
                         accentGreen.value,
                       );
-                      
+
                       if (mounted) {
                         Navigator.pop(context);
                         _refreshFocusAreas();
@@ -563,15 +606,22 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                       }
                     } catch (e) {
                       if (e.toString().contains("UNIQUE constraint failed")) {
-                        _showModernSnackBar("Focus '$name' already exists!", isError: true);
+                        _showModernSnackBar("Focus '$name' already exists!",
+                            isError: true);
                       } else {
-                        _showModernSnackBar("Error saving focus area", isError: true);
+                        _showModernSnackBar("Error saving focus area",
+                            isError: true);
                       }
                     }
                   },
                   child: Text(
                     "SAVE FOCUS",
-                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: Colors.white, fontSize: 14, letterSpacing: 1)
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      fontSize: 14,
+                      letterSpacing: 1,
+                    ),
                   ),
                 ),
               ),
