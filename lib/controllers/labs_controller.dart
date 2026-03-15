@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 class LabController {
   final dbHelper = DatabaseHelper.instance;
 
-  // Helper to get local date strings for SQLite
   String _getDateString(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
 
   /// --- STREAK VALIDATION ENGINE ---
@@ -22,7 +21,6 @@ class LabController {
       final int habitId = habit['id'];
       final String timeCategory = (habit['timeOfDay'] ?? "Anytime").toString().toLowerCase();
 
-      // Check if habit is within its active lifespan
       if (habit['startDate'] != null && habit['startDate'].toString().isNotEmpty) {
         if (todayStr.compareTo(habit['startDate'].toString()) < 0) continue;
       }
@@ -95,7 +93,7 @@ class LabController {
     }
   }
 
-  // 1. Filtered Chart Data - Updated to count only habits active on specific days
+  // 1. Filtered Chart Data
   Future<List<Map<String, dynamic>>> getFilteredChartData(String timeframe) async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> allHabits = await db.query('habits');
@@ -104,31 +102,25 @@ class LabController {
     for (int i = 6; i >= 0; i--) {
       DateTime targetDate = DateTime.now().subtract(Duration(days: i));
       String targetDateStr = _getDateString(targetDate);
-      
       int totalActiveOnThisDay = 0;
       int completedOnThisDay = 0;
 
       for (var habit in allHabits) {
         if (timeframe != "Overall" && habit['timeOfDay'] != timeframe) continue;
-
         if (habit['startDate'] != null && habit['startDate'].toString().isNotEmpty) {
           if (targetDateStr.compareTo(habit['startDate'].toString()) < 0) continue;
         }
         if (habit['endDate'] != null && habit['endDate'].toString().isNotEmpty) {
           if (targetDateStr.compareTo(habit['endDate'].toString()) > 0) continue;
         }
-
         totalActiveOnThisDay++;
-
         final List<Map<String, dynamic>> log = await db.query(
           'daily_logs',
           where: 'habitId = ? AND date = ? AND isCompleted = 1',
           whereArgs: [habit['id'], targetDateStr],
         );
-
         if (log.isNotEmpty) completedOnThisDay++;
       }
-      
       chartData.add({
         'day': DateFormat('E').format(targetDate).substring(0, 1), 
         'rate': totalActiveOnThisDay > 0 ? (completedOnThisDay / totalActiveOnThisDay) : 0.0
@@ -137,66 +129,58 @@ class LabController {
     return chartData;
   }
 
-  // 2. Completion Rate - 30 Day Window (Accurate Denominator)
- Future<double> getCompletionRate() async {
+  // 2. Cumulative Completion Rate (Consistency Rating)
+  Future<double> getCompletionRate() async {
     final db = await dbHelper.database;
     final List<Map<String, dynamic>> allHabits = await db.query('habits');
     final DateTime now = DateTime.now();
-    
-    int totalExpectedCompletions = 0;
-    int totalActualCompletions = 0;
+    int totalExpected = 0;
+    int totalDone = 0;
 
-    // We look back at the last 30 days (or you can increase this to 90/365)
     for (int i = 0; i < 30; i++) {
       DateTime targetDate = now.subtract(Duration(days: i));
       String targetDateStr = _getDateString(targetDate);
-
       for (var habit in allHabits) {
-        // Only count the habit if it was actually "active" on that specific day
         if (habit['startDate'] != null && habit['startDate'].toString().isNotEmpty) {
           if (targetDateStr.compareTo(habit['startDate'].toString()) < 0) continue;
         }
         if (habit['endDate'] != null && habit['endDate'].toString().isNotEmpty) {
           if (targetDateStr.compareTo(habit['endDate'].toString()) > 0) continue;
         }
-
-        // This is an "opportunity" to complete a habit
-        totalExpectedCompletions++;
-
+        totalExpected++;
         final List<Map<String, dynamic>> log = await db.query(
           'daily_logs',
           where: 'habitId = ? AND date = ? AND isCompleted = 1',
           whereArgs: [habit['id'], targetDateStr],
         );
-
-        if (log.isNotEmpty) {
-          totalActualCompletions++;
-        }
+        if (log.isNotEmpty) totalDone++;
       }
     }
-    
-    // Returns the cumulative average (e.g., 80% if you had 100% yesterday and 60% today)
-    return totalExpectedCompletions > 0 
-        ? (totalActualCompletions / totalExpectedCompletions) 
-        : 0.0;
+    return totalExpected > 0 ? (totalDone / totalExpected) : 0.0;
   }
-  // 3. Habit Difficulty Index
-  Future<List<Map<String, dynamic>>> getHabitDifficulty() async {
+
+  // 3. Habit Difficulty Index - REVERSED Formula
+  // This now calculates (Missed / Total) to show which habits are hardest for you.
+ Future<List<Map<String, dynamic>>> getHabitDifficulty() async {
     final db = await dbHelper.database;
     return await db.rawQuery('''
       SELECT 
-        h.id, h.title, h.colorHex,
-        COALESCE(SUM(CASE WHEN l.isCompleted = 1 THEN 1 ELSE 0 END), 0) as completedCount,
-        CAST(COUNT(l.id) AS FLOAT) as totalLogs,
+        h.id, 
+        h.title, 
+        h.colorHex,
+        SUM(CASE WHEN l.isCompleted = 1 THEN 1 ELSE 0 END) as completedCount,
+        COUNT(l.id) as totalLogs,
         CASE 
           WHEN COUNT(l.id) > 0 
-          THEN (CAST(SUM(CASE WHEN l.isCompleted = 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(l.id)) * 100 
+          THEN (CAST(SUM(CASE WHEN l.isCompleted = 0 OR l.isCompleted = -1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(l.id)) * 100 
           ELSE 0.0 
-        END as successRate
+        END as failureRate
       FROM habits h 
-      LEFT JOIN daily_logs l ON h.id = l.habitId 
+      INNER JOIN daily_logs l ON h.id = l.habitId 
+      WHERE h.title IS NOT NULL 
       GROUP BY h.id 
-      ORDER BY successRate ASC 
+      HAVING totalLogs > 0
+      ORDER BY failureRate DESC 
       LIMIT 3
     ''');
   }
@@ -210,7 +194,6 @@ class LabController {
       FROM habits h JOIN daily_logs l ON h.id = l.habitId
       GROUP BY h.timeOfDay
     ''');
-    
     Map<String, double> categories = {"Morning": 0.0, "Afternoon": 0.0, "Evening": 0.0, "Anytime": 0.0};
     for (var item in res) {
       if (item['timeOfDay'] != null) {
@@ -232,31 +215,25 @@ class LabController {
       'SELECT AVG(CAST(isCompleted AS REAL)) as avg FROM daily_logs WHERE date >= ? AND date < ?', 
       [sevenDaysAgo, today]
     );
-    
     var prevRes = await db.rawQuery(
       'SELECT AVG(CAST(isCompleted AS REAL)) as avg FROM daily_logs WHERE date >= ? AND date < ?', 
       [fourteenDaysAgo, sevenDaysAgo]
     );
-    
     double current = (currentRes.first['avg'] as num? ?? 0.0).toDouble();
     double previous = (prevRes.first['avg'] as num? ?? 0.0).toDouble();
-    
-    if (previous == 0) return current; 
-    return current - previous; 
+    return previous == 0 ? current : current - previous; 
   }
 
   // 6. Drop-off Detection
   Future<List<String>> getDropOffs() async {
     final db = await dbHelper.database;
     final String fiveDaysAgo = _getDateString(DateTime.now().subtract(const Duration(days: 5)));
-    
     final res = await db.rawQuery('''
       SELECT h.title FROM habits h JOIN daily_logs l ON h.id = l.habitId
       WHERE l.date >= ?
       GROUP BY h.id 
       HAVING COUNT(l.id) >= 5 AND SUM(l.isCompleted) = 0
     ''', [fiveDaysAgo]);
-    
     return res.map((e) => e['title'].toString()).toList();
   }
 
@@ -267,9 +244,14 @@ class LabController {
     return maps.map((h) => Habit.fromMap(h)).toList();
   }
 
-  // 8. Habit Failure Analysis
+  // 8. Habit Failure Analysis (Updated with Dashboard logic)
   Future<Map<String, dynamic>> getHabitAnalysis(int habitId) async {
     final db = await dbHelper.database;
+    final allHabits = await db.query('habits', where: 'id = ?', whereArgs: [habitId]);
+    if (allHabits.isEmpty) return {"reason": "Habit not found."};
+    
+    final habitData = allHabits.first;
+    final String? startDateStr = habitData['startDate'].toString();
     final String thirtyDaysAgo = _getDateString(DateTime.now().subtract(const Duration(days: 30)));
 
     final List<Map<String, dynamic>> logs = await db.rawQuery('''
@@ -278,16 +260,24 @@ class LabController {
       ORDER BY date ASC
     ''', [habitId, thirtyDaysAgo]);
 
-    if (logs.isEmpty) return {"reason": "Not enough data for analysis."};
+    if (logs.isEmpty) return {"reason": "Not enough data."};
 
-    int total = logs.length;
-    int missed = logs.where((l) => l['isCompleted'] == 0).length;
+    // Filter logs to only count days the habit was actually supposed to be active
+    List<Map<String, dynamic>> validLogs = logs.where((log) {
+      if (startDateStr != null && startDateStr.isNotEmpty) {
+        return log['date'].toString().compareTo(startDateStr) >= 0;
+      }
+      return true;
+    }).toList();
+
+    int total = validLogs.length;
+    int missed = validLogs.where((l) => l['isCompleted'] == 0 || l['isCompleted'] == -1).length;
     
     int weekendMissed = 0;
     int weekdayMissed = 0;
-    for (var log in logs) {
+    for (var log in validLogs) {
       DateTime date = DateTime.parse(log['date']);
-      if (log['isCompleted'] == 0) {
+      if (log['isCompleted'] == 0 || log['isCompleted'] == -1) {
         if (date.weekday == DateTime.saturday || date.weekday == DateTime.sunday) {
           weekendMissed++;
         } else {
@@ -301,13 +291,13 @@ class LabController {
 
     if (weekendMissed > weekdayMissed && weekendMissed > 0) {
       frictionPoint = "Weekend Regression";
-      advice = "Your routine breaks on Saturdays/Sundays. Try a 'Weekend Mode' reminder.";
+      advice = "Routine breaks on weekends. Try a 'Weekend Mode' reminder.";
     } else if (missed > (total * 0.5)) {
       frictionPoint = "High Friction";
-      advice = "This habit might be too ambitious. Try scaling it down to a 2-minute version.";
+      advice = "Scale it down to a 2-minute version.";
     } else if (weekdayMissed > weekendMissed) {
       frictionPoint = "Weekday Stress";
-      advice = "Workday fatigue is impacting this habit. Try moving it to your morning.";
+      advice = "Workday fatigue is a factor. Try moving it to your morning.";
     }
 
     return {
@@ -315,7 +305,7 @@ class LabController {
       "totalCount": total,
       "frictionPoint": frictionPoint,
       "advice": advice,
-      "completionRate": ((total - missed) / total) * 100,
+      "completionRate": total == 0 ? 0 : ((total - missed) / total) * 100,
     };
   }
 }
