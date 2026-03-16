@@ -1,19 +1,82 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
-void main() {
-  runApp(const HabitHeroApp());
+import 'screens/welcome_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/labs_screen.dart';
+import 'screens/streaks_screen.dart'; // Import your new screen
+
+import 'services/database_helper.dart';
+import 'services/notification_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize background services
+  await AndroidAlarmManager.initialize();
+  
+  final notificationService = NotificationService();
+  await notificationService.init();
+  
+  // Requesting permissions on startup is critical for Android 14+
+  await notificationService.requestPermissions();
+
+  final db = await DatabaseHelper.instance.database;
+  final List<Map<String, dynamic>> user = await db.query('users', limit: 1);
+
+  String? userName;
+  Widget initialScreen;
+
+  if (user.isNotEmpty) {
+    userName = user.first['name'] ?? "Hero";
+    initialScreen = DashboardScreen(userName: userName!);
+  } else {
+    initialScreen = const WelcomeScreen();
+  }
+
+  runApp(
+    HabitHeroApp(
+      startScreen: initialScreen,
+      userName: userName,
+    ),
+  );
 }
 
 class HabitHeroApp extends StatelessWidget {
-  const HabitHeroApp({super.key});
+  final Widget startScreen;
+  final String? userName;
+
+  const HabitHeroApp({
+    super.key,
+    required this.startScreen,
+    this.userName,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // We use a constant fallback to ensure the route builder doesn't fail
+    final String currentUserName = userName ?? "Hero";
+
     return MaterialApp(
       title: 'HabitHero',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const HomeScreen(),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF1DB97F),
+          primary: const Color(0xFF1DB97F),
+        ),
+        textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF8FAFB),
+      ),
+      home: startScreen,
+      // Registered routes matching your CustomNavBar logic
+      routes: {
+        '/dashboard': (context) => DashboardScreen(userName: currentUserName),
+        '/streaks': (context) => const StreaksScreen(), // Added Streaks route
+        '/labs': (context) => const LabScreen(),
+      },
     );
   }
 }
