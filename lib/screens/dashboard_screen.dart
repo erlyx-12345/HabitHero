@@ -4,18 +4,90 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/dashboard_controller.dart';
 import '../components/custom_navbar.dart';
+import '../services/notification_service.dart';
 import 'create_habit_screen.dart';
 import 'habit_details_screen.dart'; 
 import '../models/habit_model.dart';
+import '../controllers/labs_controller.dart'; // Assuming your file is named lab_controller.dart
+import '../controllers/profile_controller.dart'; 
+import 'profile_screen.dart';
+import 'dart:io';
+
+
+
+class AlarmStatusCard extends StatefulWidget {
+  const AlarmStatusCard({super.key});
+
+  @override
+  State<AlarmStatusCard> createState() => _AlarmStatusCardState();
+}
+
+class _AlarmStatusCardState extends State<AlarmStatusCard> {
+  bool _isReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkStatus();
+    
+  }
+
+  void _checkStatus() async {
+    bool ready = await NotificationService().isReadyForAlarms();
+    setState(() => _isReady = ready);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _isReady ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _isReady ? Colors.green : Colors.red),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _isReady ? Icons.check_circle : Icons.warning_rounded,
+            color: _isReady ? Colors.green : Colors.red,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isReady ? "System Ready" : "Alarms Throttled",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  _isReady 
+                    ? "Notifications will fire on time." 
+                    : "Tap to fix battery/alarm settings.",
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (!_isReady)
+            IconButton(
+              onPressed: () => NotificationService().requestPermissions(),
+              icon: const Icon(Icons.settings_suggest),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
 class DashboardScreen extends StatefulWidget {
   final String userName;
-  final List<String> selectedTargets;
-
+ 
   const DashboardScreen({
     super.key,
     required this.userName,
-    required this.selectedTargets,
+
   });
 
   @override
@@ -24,6 +96,10 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final DashboardController _controller = DashboardController();
+  final NotificationService _notificationService = NotificationService();
+  final ProfileController _profileController = ProfileController(); // Add this
+  String? _profilePath;
+
   List<Map<String, dynamic>> _allHabits = [];
   String? _displayName;
   int _navIndex = 0;
@@ -39,7 +115,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Color primaryGreen = const Color(0xFF10B981);
   final Color deepEmerald = const Color(0xFF064E3B);
   final Color bgLight = const Color(0xFFF8FAFC);
-  final Color slate900 = const Color(0xFF0F172A);
+  final Color slate900 = const Color.fromARGB(255, 95, 98, 103);
   final Color slate600 = const Color(0xFF475569);
   final Color slate400 = const Color(0xFF94A3B8);
   final Color slate100 = const Color(0xFFF1F5F9);
@@ -50,6 +126,7 @@ void initState() {
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   _displayName = widget.userName;
   _initAppData(); // This now handles the scroll internally
+  _fetchUserData();
 }
   void _scrollToToday({bool animated = true}) {
   if (!_dateScrollController.hasClients) return;
@@ -77,42 +154,86 @@ void initState() {
   }
 }
 
- Future<void> _initAppData() async {
+Future<void> _initAppData() async {
   final startDate = await _controller.getAppStartDate();
+  
+  // Create an instance of LabController to run the sync
+  final LabController labController = LabController();
+  await labController.syncStreaks(); // This saves missed habits to DB
+
   if (mounted) {
     setState(() {
       _installationDate = startDate;
     });
 
-    // We refresh data first
     await _refreshData();
 
-    // Now that _installationDate is set and the list is built, we scroll
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToToday(animated: false);
     });
   }
 }
 
-  Future<void> _refreshData({bool silent = false}) async {
-    if (!mounted) return;
-    
-    // Only show the full screen loader if NOT a silent refresh
-    if (!silent) {
-      setState(() => _isLoading = true);
-    }
 
-    final name = await _controller.getUserName();
-    final habits = await _controller.getHabitsWithLogs(date: _selectedDate);
+  
+ Future<void> _refreshData({bool silent = false}) async {
+  if (!mounted) return;
+  if (!silent) setState(() => _isLoading = true);
 
+  // ADD THIS: Recalculate streaks before fetching the new list
+  final LabController labController = LabController();
+  await labController.syncStreaks(); 
+
+  final habits = await _controller.getHabitsWithLogs(date: _selectedDate);
+
+    // Fetch the habits for the selected date
     if (mounted) {
       setState(() {
-        if (name != null) _displayName = name;
         _allHabits = habits;
-        _isLoading = false; // Always ensure loader is off after data arrives
+        _isLoading = false;
       });
+
+      final now = DateTime.now();
+      
+      // Only sync alarms if we are actually looking at 'Today' in the UI
+      bool isToday = _selectedDate.year == now.year && 
+                     _selectedDate.month == now.month && 
+                     _selectedDate.day == now.day;
+
+      if (isToday) {
+        debugPrint("HabitHero: Syncing active alarms for today...");
+        
+        for (var habit in habits) {
+          final String? timeStr = habit['reminderTime'];
+          final bool isCompleted = habit['isCompleted'] == 1;
+          
+          // Only schedule if: Not completed, has a time, and format is valid
+          if (!isCompleted && timeStr != null && timeStr.contains(':')) {
+            try {
+              final parts = timeStr.split(':');
+              final int hour = int.parse(parts[0]);
+              final int minute = int.parse(parts[1]);
+
+              // Schedule the reminder (our Service handles the "Grace Period")
+              _notificationService.scheduleHabitReminder(
+                habit['id'], 
+                habit['title'], 
+                hour, 
+                minute
+              );
+            } catch (e) {
+              debugPrint("SYNC ERROR for ${habit['title']}: $e");
+            }
+          } else if (isCompleted) {
+            // If the user checked it off, cancel any pending alarm for today
+            _notificationService.cancelReminder(habit['id']);
+          }
+        }
+      }
     }
   }
+
+  
 
   String _getCurrentTimeframe() {
     final int hour = DateTime.now().hour;
@@ -451,34 +572,69 @@ Widget build(BuildContext context) {
   bool isToday = selectedDateOnly.isAtSameMomentAs(todayDateOnly);
   bool isPastDay = selectedDateOnly.isBefore(todayDateOnly);
 
-  final List<Map<String, dynamic>> filteredHabits = _allHabits.where((h) {
-    if (_selectedTimeFilter == "All") return true;
-    return (h['timeOfDay']?.toString().toLowerCase() == _selectedTimeFilter.toLowerCase());
-  }).toList();
+ final List<Map<String, dynamic>> filteredHabits = _allHabits.where((h) {
+  // 1. Time Filter (Morning/Afternoon/Evening/All)
+  bool matchesTime = _selectedTimeFilter == "All" || 
+      (h['timeOfDay']?.toString().toLowerCase() == _selectedTimeFilter.toLowerCase());
 
-  filteredHabits.sort((a, b) {
-    int getPriority(String? time) {
-      switch (time?.toString().toLowerCase()) {
-        case 'morning': return 1;
-        case 'afternoon': return 2;
-        case 'evening': return 3;
-        case 'anytime': return 4;
-        default: return 5;
+  // Normalize the date selected on the UI carousel to midnight
+  DateTime selectedDateOnly = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+
+  // 2. Strict Start Date Check
+  bool hasStarted = true;
+  if (h['startDate'] != null) {
+    try {
+      // Parse the habit's start date from the database
+      DateTime dbStart = DateTime.parse(h['startDate'].toString());
+      DateTime normalizedStart = DateTime(dbStart.year, dbStart.month, dbStart.day);
+      
+      // If the date selected on the carousel is BEFORE the habit's start day, hide it
+      if (selectedDateOnly.isBefore(normalizedStart)) {
+        hasStarted = false;
       }
+    } catch (e) {
+      debugPrint("Error parsing startDate: $e");
     }
-    return getPriority(a['timeOfDay']).compareTo(getPriority(b['timeOfDay']));
-  });
+  }
 
-  final uncompletedHabits = filteredHabits.where((h) {
-    if (h['isCompleted'] == true) return false;
-    if (!isToday) return true;
-    String habitTime = h['timeOfDay']?.toString() ?? "Morning";
-    if (currentTimeframe == "Afternoon" && habitTime == "Morning") return false;
-    if (currentTimeframe == "Evening" && (habitTime == "Morning" || habitTime == "Afternoon")) return false;
-    if (currentTimeframe == "Night") return false;
-    return true;
-  }).toList();
+  // 3. End Date Check
+  bool isWithinRange = true;
+  if (h['endDate'] != null) {
+    try {
+      DateTime dbEnd = DateTime.parse(h['endDate'].toString());
+      DateTime normalizedEnd = DateTime(dbEnd.year, dbEnd.month, dbEnd.day);
+      
+      // If the date selected is AFTER the end day, hide it
+      if (selectedDateOnly.isAfter(normalizedEnd)) {
+        isWithinRange = false;
+      }
+    } catch (e) {
+      debugPrint("Error parsing endDate: $e");
+    }
+  }
 
+  return matchesTime && hasStarted && isWithinRange;
+}).toList();
+ final uncompletedHabits = filteredHabits.where((h) {
+  // 1. If it's done, it's not uncompleted.
+  if (h['isCompleted'] == true) return false;
+  
+  // 2. If we are looking at a past day, it's already "processed."
+  if (isPastDay) return false;
+
+  // 3. For Today: Only keep it in 'Up Next' if the window hasn't passed
+  if (isToday) {
+    final int hour = now.hour;
+    final String time = (h['timeOfDay'] ?? "Anytime").toString().toLowerCase();
+    
+    // Logic: If current time is past the window, it's no longer "Up Next"
+    if (time == 'morning' && hour >= 12) return false;    // Missed after 11:59 AM
+    if (time == 'afternoon' && hour >= 18) return false;  // Missed after 5:59 PM
+    // Evening and Anytime stay in "Up Next" until the day ends
+  }
+
+  return true; 
+}).toList();
   final nextTask = uncompletedHabits.isNotEmpty ? uncompletedHabits.first : null;
   final habitsInList = isToday
       ? filteredHabits.where((h) => h['id'] != nextTask?['id']).toList()
@@ -543,13 +699,18 @@ Widget build(BuildContext context) {
                 height: 48,
                 child: FloatingActionButton.extended(
                   heroTag: "newHabit",
+            
                   onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const CreateHabitScreen()),
-                    );
-                    if (result == true) _refreshData();
-                  },
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CreateHabitScreen(
+                            initialStartDate: _selectedDate, // Pass the date from your carousel
+                          ),
+                        ),
+                      );
+                      if (result == true) _refreshData();
+                    },
                   backgroundColor: deepEmerald,
                   elevation: 3,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -634,35 +795,80 @@ Widget build(BuildContext context) {
 }
 
   Widget _buildHeader() {
-    return Row(
-      children: [
-        Container(
-          width: 44,
-          height: 44,
+  const Color primaryGreen = Color(0xFF10B981);
+  const Color slate400 = Color(0xFF94A3B8);
+  const Color slate900 = Color(0xFF0F172A);
+
+  return Row(
+    children: [
+      GestureDetector(
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ProfileScreen()),
+          );
+          _fetchUserData();
+        },
+        child: Container(
+          width: 52,
+          height: 52,
+          padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: primaryGreen.withOpacity(0.2), width: 2),
-            image: const DecorationImage(
-              image: NetworkImage("https://ui-avatars.com/api/?name=Marl+Laurence&background=10B981&color=fff"),
-              fit: BoxFit.cover,
+            border: Border.all(
+              color: primaryGreen.withOpacity(0.2),
+              width: 2,
             ),
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Good Morning,", style: GoogleFonts.poppins(fontSize: 14, color: slate400)),
-              Text(_displayName ?? 'Marl',
-                  style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w700, color: slate900)),
-            ],
+          child: CircleAvatar(
+            backgroundColor: primaryGreen.withOpacity(0.1),
+            backgroundImage: (_profilePath != null && _profilePath!.isNotEmpty)
+                ? FileImage(File(_profilePath!))
+                : const NetworkImage(
+                    "https://ui-avatars.com/api/?name=User&background=10B981&color=fff",
+                  ) as ImageProvider,
           ),
         ),
-        _buildProgressRing(),
-      ],
-    );
+      ),
+      const SizedBox(width: 14),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Welcome back,",
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: slate400,
+              ),
+            ),
+            Text(
+              _displayName ?? 'Hero',
+              style: GoogleFonts.poppins(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: slate900,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+      _buildProgressRing(),
+    ],
+  );
+}
+
+Future<void> _fetchUserData() async {
+  final userData = await ProfileController.fetchUserData();
+  if (userData != null && mounted) {
+    setState(() {
+      _displayName = userData['name'];
+      _profilePath = userData['profilePath'];
+    });
   }
+}
 
   Widget _buildProgressRing() {
     double progress = _controller.calculateProgress(_allHabits);
@@ -808,197 +1014,233 @@ Widget _buildDateCarousel() {
   }
 
   Widget _buildPriorityCard(Map<String, dynamic> habit) {
-    // Check if finished using controller flags
-    if (habit['isCompleted'] == true || habit['isMissed'] == true) {
-      return _buildAllDoneCard();
+  final DateTime now = DateTime.now();
+  final bool isDone = habit['isCompleted'] == true;
+  
+  // Dynamic Missed Logic for the Priority Card
+  final bool isMissed = (() {
+    if (isDone) return false;
+    final String time = (habit['timeOfDay'] ?? "Anytime").toString().toLowerCase();
+    final int hour = now.hour;
+
+    switch (time) {
+      case 'morning':
+        return hour >= 12; // Expired if 12:00 PM or later
+      case 'afternoon':
+        return hour >= 18; // Expired if 6:00 PM or later
+      case 'evening':
+      case 'anytime':
+        return false;      // Valid until the 24-hour day is complete
+      default:
+        return false;
     }
+  })();
 
-    final int currentStreak = habit['streak'] ?? 0;
-    final String habitTime = habit['timeOfDay'] ?? "Morning";
-    
-    final IconData customIcon = habit['iconCode'] != null 
-        ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') 
-        : Icons.bolt;
-    
-    final Color customColor = habit['colorHex'] != null 
-        ? Color(habit['colorHex']) 
-        : deepEmerald;
-
-    return GestureDetector(
-      onTap: () => _showHabitActions(habit, customIcon, habitTime),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(40),
-          boxShadow: [
-            BoxShadow(
-              color: customColor.withOpacity(0.1), 
-              blurRadius: 25, 
-              offset: const Offset(0, 20)
-            )
-          ],
-          border: Border.all(color: slate100),
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: customColor.withOpacity(0.1), 
-                          borderRadius: BorderRadius.circular(20)
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.local_fire_department, color: customColor, size: 14),
-                            const SizedBox(width: 4),
-                            Text("$currentStreak DAY STREAK",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10, 
-                                  fontWeight: FontWeight.w800, 
-                                  color: customColor
-                                )),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(habit['title'] ?? "No Title",
-                          style: GoogleFonts.poppins(
-                            fontSize: 24, 
-                            fontWeight: FontWeight.w700, 
-                            color: slate900
-                          )),
-                      Text(
-                          "${habitTime.toUpperCase()} • ${habit['focusArea']?.toUpperCase() ?? 'GENERAL'}",
-                          style: GoogleFonts.poppins(
-                            fontSize: 12, 
-                            fontWeight: FontWeight.w600, 
-                            color: slate400
-                          )),
-                    ],
-                  ),
-                ),
-                Column(
-                  children: [
-                    Icon(Icons.more_horiz, color: slate400.withOpacity(0.5)),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: customColor.withOpacity(0.1), 
-                        borderRadius: BorderRadius.circular(24)
-                      ),
-                      child: Icon(customIcon, color: customColor, size: 36),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () async {
-                await _controller.markHabitAsDone(habit['id'], currentStreak);
-                _refreshData();
-              },
-              icon: const Icon(Icons.check_circle, size: 20),
-              label: const Text("MARK AS DONE"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: customColor,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 56),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                textStyle: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  if (isDone || isMissed) {
+    return _buildAllDoneCard();
   }
 
- Widget _buildHabitTile(Map<String, dynamic> habit) {
-    final bool isDone = habit['isCompleted'] == true;
-    final bool isMissed = habit['isMissed'] == true; // Added from controller
-    final String habitTime = habit['timeOfDay'] ?? "Morning";
-    
-    // Logic for icon and color remains yours
-    final IconData customIcon = habit['iconCode'] != null ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') : Icons.psychology;
-    final Color customColor = habit['colorHex'] != null ? Color(habit['colorHex']) : primaryGreen;
+  // Parse the time string for the reminder text
+  int? rHour;
+  int? rMinute;
+  if (habit['reminderTime'] != null && habit['reminderTime'].contains(':')) {
+    final parts = habit['reminderTime'].split(':');
+    rHour = int.tryParse(parts[0]);
+    rMinute = int.tryParse(parts[1]);
+  }
 
-    return GestureDetector(
-      onTap: () {
-        if (!isDone && !isMissed) {
-          _showHabitActions(habit, customIcon, habitTime);
-        } else {
-          String message = isDone ? "This habit is already completed." : "This habit was missed and cannot be modified.";
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message, style: GoogleFonts.poppins(fontSize: 12)),
-              backgroundColor: slate900,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      },
-      child: Opacity(
-        // Opacity now reacts to isMissed as well
-        opacity: (isDone || isMissed) ? 0.4 : 1.0, 
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: isMissed ? Colors.redAccent.withOpacity(0.2) : (isDone ? customColor.withOpacity(0.3) : slate100)),
-          ),
-          child: Row(
+  final int currentStreak = habit['streak'] ?? 0;
+  final String habitTime = habit['timeOfDay'] ?? "Anytime";
+  final IconData customIcon = habit['iconCode'] != null ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') : Icons.bolt;
+  final Color customColor = habit['colorHex'] != null ? Color(habit['colorHex']) : deepEmerald;
+
+  return GestureDetector(
+    onTap: () => _showHabitActions(habit, customIcon, habitTime),
+    child: Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(40),
+        boxShadow: [BoxShadow(color: customColor.withOpacity(0.1), blurRadius: 25, offset: const Offset(0, 20))],
+        border: Border.all(color: slate100),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                    color: isMissed ? Colors.redAccent.withOpacity(0.1) : customColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16)),
-                child: Icon(isMissed ? Icons.timer_off_outlined : (isDone ? Icons.check_circle : customIcon),
-                    color: isMissed ? Colors.redAccent : customColor, size: 24),
-              ),
-              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(habit['title'],
-                        style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: slate900,
-                            decoration: (isDone || isMissed) ? TextDecoration.lineThrough : null)),
-                    Text(isMissed ? "MISSED ($habitTime)" : (isDone ? "COMPLETED" : "READY TO START"),
-                        style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isMissed ? Colors.redAccent : (isDone ? customColor : slate400))),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(color: customColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.local_fire_department, color: customColor, size: 14),
+                          const SizedBox(width: 4),
+                          Text("$currentStreak DAY STREAK", style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: customColor)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(habit['title'] ?? "No Title", style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w700, color: slate900)),
+                    Text(
+                      rHour != null 
+                          ? "Reminder set for ${rHour.toString().padLeft(2, '0')}:${rMinute.toString().padLeft(2, '0')}"
+                          : "No reminder set",
+                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: slate400),
+                    ),
+                    if (habit['endDate'] != null)
+                      Text(
+                        "End date: ${habit['endDate']}",
+                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: slate400),
+                      ),
                   ],
                 ),
               ),
-              if (isDone) Icon(Icons.verified, color: customColor, size: 20),
-              if (isMissed) const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
-              if (!isDone && !isMissed) Icon(Icons.more_vert, color: slate400, size: 20),
+              Column(
+                children: [
+                  Icon(Icons.more_horiz, color: slate400.withOpacity(0.5)),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 64, height: 64,
+                    decoration: BoxDecoration(color: customColor.withOpacity(0.1), borderRadius: BorderRadius.circular(24)),
+                    child: Icon(customIcon, color: customColor, size: 36),
+                  ),
+                ],
+              ),
             ],
           ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () async {
+              await _controller.markHabitAsDone(habit['id'], currentStreak);
+              _refreshData();
+            },
+            icon: const Icon(Icons.check_circle, size: 20),
+            label: const Text("MARK AS DONE"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: customColor,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 56),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              textStyle: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+  Widget _buildHabitTile(Map<String, dynamic> habit) {
+  final DateTime now = DateTime.now();
+  final bool isDone = habit['isCompleted'] == true;
+  
+  // Date contextual flags from Dashboard state
+  DateTime selectedDateOnly = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+  DateTime todayDateOnly = DateTime(now.year, now.month, now.day);
+  bool isToday = selectedDateOnly.isAtSameMomentAs(todayDateOnly);
+  bool isPastDay = selectedDateOnly.isBefore(todayDateOnly);
+
+  // Dynamic Missed Logic for Habit Tiles
+  final bool isMissed = (() {
+    if (isDone) return false;
+    if (isPastDay) return true; // Anything not completed on a previous day is missed
+
+    if (isToday) {
+      final int hour = now.hour;
+      final String timeCategory = (habit['timeOfDay'] ?? "Anytime").toString().toLowerCase();
+
+      switch (timeCategory) {
+        case 'morning':
+          return hour >= 12; // Missed starting 12:00 PM
+        case 'afternoon':
+          return hour >= 18; // Missed starting 6:00 PM
+        case 'evening':
+        case 'anytime':
+          return false;      // Not missed until the day actually ends
+        default:
+          return false;
+      }
+    }
+    return false;
+  })();
+
+  final String habitTime = habit['timeOfDay'] ?? "Anytime";
+  
+  int? rHour;
+  int? rMinute;
+  if (habit['reminderTime'] != null && habit['reminderTime'].contains(':')) {
+    final parts = habit['reminderTime'].split(':');
+    rHour = int.tryParse(parts[0]);
+    rMinute = int.tryParse(parts[1]);
+  }
+
+  final IconData customIcon = habit['iconCode'] != null ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') : Icons.psychology;
+  final Color customColor = habit['colorHex'] != null ? Color(habit['colorHex']) : primaryGreen;
+
+  return GestureDetector(
+    onTap: () {
+      if (!isDone && !isMissed) {
+        _showHabitActions(habit, customIcon, habitTime);
+      } else {
+        String message = isDone ? "This habit is already completed." : "This habit was missed and cannot be modified.";
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message, style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: slate900, behavior: SnackBarBehavior.floating),
+        );
+      }
+    },
+    child: Opacity(
+      opacity: (isDone || isMissed) ? 0.4 : 1.0, 
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: isMissed ? Colors.redAccent.withOpacity(0.2) : (isDone ? customColor.withOpacity(0.3) : slate100)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48, height: 48,
+              decoration: BoxDecoration(
+                  color: isMissed ? Colors.redAccent.withOpacity(0.1) : customColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16)),
+              child: Icon(isMissed ? Icons.timer_off_outlined : (isDone ? Icons.check_circle : customIcon),
+                  color: isMissed ? Colors.redAccent : customColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(habit['title'],
+                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: slate900, decoration: (isDone || isMissed) ? TextDecoration.lineThrough : null)),
+                  Text(
+                    rHour != null 
+                        ? "Reminder at ${rHour.toString().padLeft(2, '0')}:${rMinute.toString().padLeft(2, '0')}"
+                        : (isMissed ? "MISSED ($habitTime)" : (isDone ? "COMPLETED" : "READY TO START")),
+                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: isMissed ? Colors.redAccent : (isDone ? customColor : slate400)),
+                  ),
+                  if (habit['endDate'] != null && !isDone && !isMissed)
+                    Text("Ends on ${habit['endDate']}", style: GoogleFonts.poppins(fontSize: 11, color: slate400)),
+                ],
+              ),
+            ),
+            if (isDone) Icon(Icons.verified, color: customColor, size: 20),
+            if (isMissed) const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+            if (!isDone && !isMissed) Icon(Icons.more_vert, color: slate400, size: 20),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildAllDoneCard() {
     return Container(

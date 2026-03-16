@@ -1,30 +1,109 @@
 {
   "focus_areas": [
     {
-      "name": "Mindfulness",
-      "icon": "self_improvement",
+      "name": "Modern",
+      "icon": "devices",
       "habits": [
-        { "title": "Morning Meditation", "duration": "10 MINS", "icon": "spa", "timeOfDay": "MORNING" },
-        { "title": "Daily Journaling", "duration": "5 MINS", "icon": "edit", "timeOfDay": "EVENING" },
-        { "title": "Box Breathing", "duration": "3 MINS", "icon": "air", "timeOfDay": "ANYTIME" }
+        { "title": "Block Screen Time", "duration": "10 MINS", "icon": "phonelink_off" },
+        { "title": "Limit Caffeine Intake", "duration": "5 MINS", "icon": "coffee" },
+        { "title": "Intermittent Fasting", "duration": "3 MINS", "icon": "timer" },
+        { "title": "Laugh More", "duration": "3 MINS", "icon": "sentiment_very_satisfied" },
+        { "title": "Practice Hobby", "duration": "3 MINS", "icon": "brush" },
+        { "title": "Fast clean-up", "duration": "3 MINS", "icon": "cleaning_services" },
+        { "title": "Walk Your Pet", "duration": "Walk and spend time with your pet", "icon": "pets" },
+        { "title": "Video Call", "duration": "Talk and call your loved ones", "icon": "videocam" }
       ]
     },
     {
-      "name": "Productivity",
+      "name": "Essential Habits",
+      "icon": "auto_awesome",
+      "habits": [
+        { "title": "Set Small Goals", "duration": "Make goals more specific", "icon": "track_changes" },
+        { "title": "Prepare tomorrow's to-do list", "duration": "Make your time visible and countable", "icon": "checklist" },
+        { "title": "Walking", "duration": "Move your body and enjoy burning fat", "icon": "directions_walk" },
+        { "title": "Workout", "duration": "Strengthen muscles and lighten the mood", "icon": "fitness_center" },
+        { "title": "Sleep over 8 hours", "duration": "Recover and detoxify the body and mind", "icon": "bedtime" },
+        { "title": "Track spending", "duration": "Know where your money goes", "icon": "payments" },
+        { "title": "Clean as you go", "duration": "Make it as part of your daily routine", "icon": "mop" }
+      ]
+    },
+    {
+      "name": "Eat and Drink Healthy",
+      "icon": "restaurant",
+      "habits": [
+        { "title": "Go sugar-free", "duration": "See your body change with being sugar-free", "icon": "fmd_bad" },
+        { "title": "Limit caffeine intake", "duration": "Replace with other healthy choices", "icon": "coffee_maker" },
+        { "title": "No alcohol", "duration": "Life is way better withut alcohol", "icon": "no_drinks" },
+        { "title": "No fried food", "duration": "An easy way to lose fat", "icon": "set_meal" },
+        { "title": "Have breakfast", "duration": "Wake up your body with energy", "icon": "egg_alt" },
+        { "title": "Drink 8 cups of water", "duration": "Keep body Hydrated", "icon": "water_drop" },
+        { "title": "Take Greens and fruits", "duration": "Don't forget the natural snacks", "icon": "eco" },
+        { "title": "Take vitamins", "duration": "Take some supplements", "icon": "medication" }
+      ]
+    },
+    {
+      "name": "Keep active and get fit",
       "icon": "bolt",
       "habits": [
-        { "title": "Deep Work", "duration": "90 MINS", "icon": "psychology", "timeOfDay": "AFTERNOON" },
-        { "title": "Plan Tomorrow", "duration": "10 MINS", "icon": "event_note", "timeOfDay": "EVENING" },
-        { "title": "Inbox Zero", "duration": "15 MINS", "icon": "email", "timeOfDay": "MORNING" }
+        { "title": "Running", "duration": "Faster and further", "icon": "directions_run" },
+        { "title": "Swimming", "duration": "Activate full body", "icon": "pool" },
+        { "title": "Stretching", "duration": "Release tension and stress", "icon": "accessibility_new" },
+        { "title": "Yoga", "duration": "Calming and smoothing", "icon": "self_improvement" },
+        { "title": "Maintain good posture", "duration": "A simple way to instantly be more confident", "icon": "airline_seat_recline_normal" },
+        { "title": "Quit smoking", "duration": "Quit it", "icon": "smoke_free" },
+        { "title": "Hiking", "duration": "Find your tral to embrace nature", "icon": "hiking" }
       ]
     },
     {
-      "name": "Health",
-      "icon": "favorite",
+      "name": "Ease Stress",
+      "icon": "spa",
       "habits": [
-        { "title": "Drink Water", "duration": "2 MINS", "icon": "water_drop", "timeOfDay": "ALL DAY" },
-        { "title": "Quick Workout", "duration": "15 MINS", "icon": "fitness_center", "timeOfDay": "MORNING" },
-        { "title": "Walk 10k Steps", "duration": "60 MINS", "icon": "directions_walk", "timeOfDay": "ALL DAY" }
+        { "title": "Practice Meditation", "duration": "Connect with your inner peace", "icon": "self_improvement" },
+        { "title": "Practice breathing", "duration": "Calm yourself from every in and out", "icon": "air" },
+        { "title": "Reading", "duration": "Never enough books", "icon": "menu_book" },
+        { "title": "Keep a journal", "duration": "Know yourself better through writing", "icon": "edit_note" },
+        { "title": "Go outside", "duration": "Embrace the outside energy", "icon": "forest" },
+        { "title": "Pick a smell that eases you", "duration": "Seek fancy scents for stress relief", "icon": "psychology" }
+      ]
+    },
+    {
+      "name": "Before sleep routine",
+      "icon": "nightlight_round",
+      "habits": [
+        { "title": "Stop eating before bed", "duration": "Your stomach also needs a good sleep", "icon": "no_meals" },
+        { "title": "Go to bed early", "duration": "Early to bed,early to rise", "icon": "alarm_on" },
+        { "title": "Stretching", "duration": "Release tension and stress", "icon": "child_care" },
+        { "title": "Take a bath", "duration": "Feel the healing power of a warm bath", "icon": "bathtub" }
+      ]
+    },
+    {
+      "name": "Be an interesting person",
+      "icon": "star",
+      "habits": [
+        { "title": "Make a vlog", "duration": "Press the start button to reord your true life", "icon": "videocam" },
+        { "title": "Help someone", "duration": "The secret to happiness is helping others", "icon": "volunteer_activism" },
+        { "title": "Try a new recipe", "duration": "Give a new taste a try", "icon": "restaurant_menu" },
+        { "title": "Talk with stranger", "duration": "Be an interesting and bold person", "icon": "forum" }
+      ]
+    },
+    {
+      "name": "Budget money",
+      "icon": "account_balance_wallet",
+      "habits": [
+        { "title": "No emotional spending", "duration": "Distinguish your needs and wants", "icon": "money_off" },
+        { "title": "Create shopping lists", "duration": "Planning before spending", "icon": "shopping_cart" },
+        { "title": "Track spending", "duration": "Know where your money goes", "icon": "receipt_long" },
+        { "title": "Save money", "duration": "Put some excess coin in your piggy bank", "icon": "savings" },
+        { "title": "Home cooking", "duration": "Eat healthy while saving money", "icon": "house" }
+      ]
+    },
+    {
+      "name": "Pet Time",
+      "icon": "pets",
+      "habits": [
+        { "title": "Walk Your Pet", "duration": "Walk and spend time with your pet", "icon": "directions_run" },
+        { "title": "Prepare your pet a meal", "duration": "Your lovely wants and needs it", "icon": "set_meal" },
+        { "title": "Bathe your pet", "duration": "Wash away its troubles with some bubbles", "icon": "soap" }
       ]
     }
   ]

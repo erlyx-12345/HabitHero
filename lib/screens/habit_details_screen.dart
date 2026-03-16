@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/habit_model.dart';
 import '../controllers/createhabit_controller.dart';
+import '../services/notification_service.dart';
 import 'package:intl/intl.dart';
 
 class HabitDetailsScreen extends StatefulWidget {
   final HabitTemplate template;
   final String focusArea;
   final Map<String, dynamic>? existingHabit;
+  final DateTime? initialStartDate;
 
   const HabitDetailsScreen({
-    super.key, 
-    required this.template, 
-    required this.focusArea, 
+    super.key,
+    required this.template,
+    required this.focusArea,
     this.existingHabit,
+    this.initialStartDate,
   });
 
   @override
@@ -22,20 +25,37 @@ class HabitDetailsScreen extends StatefulWidget {
 
 class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   final CreateHabitController _controller = CreateHabitController();
-  
+  final NotificationService _notificationService = NotificationService();
+
+  late TextEditingController _titleController;
   late IconData _selectedIcon;
   late Color _selectedColor;
-  String _selectedTime = "Anytime";
   bool _remindersEnabled = false;
   DateTime? _endDate;
+  TimeOfDay? _pickedReminderTime; 
+  dynamic _selectedTimePeriod;
+  bool _isIconPickerExpanded = false;
 
   final List<Color> _palette = [
-    const Color(0xFF10B981), // Emerald
-    const Color(0xFF3B82F6), // Blue
-    const Color(0xFFF59E0B), // Amber
-    const Color(0xFFEF4444), // Red
-    const Color(0xFF8B5CF6), // Violet
-    const Color(0xFF0F172A), // Slate
+    const Color(0xFF10B981),
+    const Color(0xFF064E3B),
+    const Color(0xFF3B82F6),
+    const Color(0xFF8B5CF6),
+    const Color(0xFFF43F5E),
+    const Color(0xFFF59E0B),
+    const Color(0xFF0F172A),
+    const Color(0xFF14B8A6),
+  ];
+
+  final List<IconData> _iconLibrary = [
+    Icons.star_rounded, Icons.favorite_rounded, Icons.fitness_center_rounded, 
+    Icons.book_rounded, Icons.water_drop_rounded, Icons.self_improvement_rounded, 
+    Icons.directions_run_rounded, Icons.bedtime_rounded, Icons.lightbulb_rounded, 
+    Icons.restaurant_rounded, Icons.code_rounded, Icons.payments_rounded, 
+    Icons.psychology_rounded, Icons.pets_rounded, Icons.wb_sunny_rounded,
+    Icons.brush_rounded, Icons.medication_rounded, Icons.timer_rounded,
+    Icons.church_rounded, Icons.hiking_rounded, Icons.laptop_mac_rounded,
+    Icons.spa_rounded, Icons.coffee_rounded, Icons.shutter_speed_rounded,
   ];
 
   bool get isEditMode => widget.existingHabit != null;
@@ -43,146 +63,277 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    _titleController = TextEditingController(text: widget.template.title);
+    
     if (isEditMode) {
       final habit = widget.existingHabit!;
       _selectedIcon = IconData(habit['iconCode'], fontFamily: 'MaterialIcons');
       _selectedColor = Color(habit['colorHex']);
-      _selectedTime = habit['timeOfDay'] ?? "Anytime";
+      _selectedTimePeriod = habit['timeOfDay'] ?? "Anytime";
       _remindersEnabled = habit['reminder'] == 1;
+      
+      String? rawTime = habit['reminderTime'];
+      if (rawTime != null && rawTime.contains(':')) {
+        final parts = rawTime.split(':');
+        _pickedReminderTime = TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
+      }
       if (habit['endDate'] != null) {
         _endDate = DateTime.parse(habit['endDate']);
       }
     } else {
       _selectedIcon = widget.template.icon;
       _selectedColor = const Color(0xFF10B981);
-      _selectedTime = widget.template.timeOfDay;
+      _selectedTimePeriod = widget.template.timeOfDay;
     }
   }
 
   @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
+
+  bool _isValidTimeSelection(TimeOfDay picked) {
+    int hour = picked.hour;
+    if (_selectedTimePeriod == "Morning") return (hour >= 4 && hour < 12);
+    if (_selectedTimePeriod == "Afternoon") return (hour >= 12 && hour < 17);
+    if (_selectedTimePeriod == "Evening") return (hour >= 17 && hour <= 23);
+    return true;
+  }
+
+  TimeOfDay _getDefaultStartTime() {
+    if (_selectedTimePeriod == "Morning") return const TimeOfDay(hour: 8, minute: 0);
+    if (_selectedTimePeriod == "Afternoon") return const TimeOfDay(hour: 14, minute: 0);
+    if (_selectedTimePeriod == "Evening") return const TimeOfDay(hour: 19, minute: 0);
+    return TimeOfDay.now();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final String timeLabel = _pickedReminderTime?.format(context) ?? "";
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white, 
-        elevation: 0, 
+        backgroundColor: Colors.white,
+        elevation: 0,
         centerTitle: true,
         title: Text(
-          isEditMode ? "EDIT HABIT" : "CUSTOMIZE", 
+          isEditMode ? "EDIT HABIT" : "CUSTOMIZE",
           style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8), letterSpacing: 1.5)
         ),
         leading: const BackButton(color: Color(0xFF0F172A))
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      extendBody: true,
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCustomNameInput(),
+                  const SizedBox(height: 32),
+                  _buildSectionLabel("VISUAL STYLE"),
+                  _buildExpandableIconPicker(),
+                  const SizedBox(height: 16),
+                  _buildColorPicker(),
+                  const SizedBox(height: 32),
+                  _buildSectionLabel("SCHEDULE"),
+                  _buildTimeOptions(),
+                  const SizedBox(height: 32),
+                  _buildSectionLabel("ADVANCED SETTINGS"),
+                  _buildSettingsToggle(
+                    _remindersEnabled ? "Reminder set for $timeLabel" : "Set a Reminder", 
+                    _remindersEnabled, 
+                    (v) async {
+                      if (v) {
+                        final TimeOfDay? picked = await showTimePicker(
+                          context: context,
+                          initialTime: _pickedReminderTime ?? _getDefaultStartTime(),
+                          helpText: "SELECT ${_selectedTimePeriod.toString().toUpperCase()} REMINDER",
+                        );
+
+                        if (picked != null) {
+                          if (_isValidTimeSelection(picked)) {
+                            setState(() {
+                              _remindersEnabled = true;
+                              _pickedReminderTime = picked;
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text("Please pick a time within the '$_selectedTimePeriod' range."),
+                              backgroundColor: Colors.redAccent,
+                            ));
+                          }
+                        }
+                      } else {
+                        setState(() {
+                          _remindersEnabled = false;
+                          _pickedReminderTime = null;
+                        });
+                      }
+                    }
+                  ),
+                  const Divider(color: Color(0xFFF1F5F9), height: 32),
+                  _buildEndDateTile(),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
+          _buildSaveButtonAction(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaveButtonAction() {
+    return Container(
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+          child: ElevatedButton(
+            onPressed: _handleSaveProcess,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _selectedColor,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 64), 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              elevation: 0,
+            ),
+            child: Text(
+              isEditMode ? "UPDATE HABIT" : "CREATE HABIT",
+              style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w800, letterSpacing: 1),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomNameInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionLabel("HABIT NAME"),
+        TextField(
+          controller: _titleController,
+          style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A)),
+          decoration: InputDecoration(
+            hintText: "E.g. Morning Yoga",
+            filled: true,
+            fillColor: const Color(0xFFF8FAFC),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            prefixIcon: Icon(_selectedIcon, color: _selectedColor),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExpandableIconPicker() {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+        ),
+        child: ExpansionTile(
+          onExpansionChanged: (val) => setState(() => _isIconPickerExpanded = val),
+          leading: Icon(Icons.palette_outlined, color: _selectedColor),
+          title: Text("Select Habit Icon", style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF475569))),
+          trailing: Icon(_isIconPickerExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded),
           children: [
-            _buildHeroSection(),
-            const SizedBox(height: 32),
-            _buildSectionLabel("VISUAL STYLE"),
-            _buildColorPicker(),
-            const SizedBox(height: 32),
-            _buildSectionLabel("SCHEDULE"),
-            _buildTimeOptions(),
-            const SizedBox(height: 32),
-            _buildSectionLabel("ADVANCED SETTINGS"),
-            _buildSettingsToggle("Daily Reminder", _remindersEnabled, (v) => setState(() => _remindersEnabled = v)),
-            const Divider(color: Color(0xFFF1F5F9), height: 32),
-            _buildEndDateTile(),
-            const SizedBox(height: 48),
-            _buildSaveButton(),
-            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 5, mainAxisSpacing: 10, crossAxisSpacing: 10,
+                ),
+                itemCount: _iconLibrary.length,
+                itemBuilder: (context, index) {
+                  final icon = _iconLibrary[index];
+                  bool isSelected = _selectedIcon == icon;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedIcon = icon),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        color: isSelected ? _selectedColor : Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: isSelected ? _selectedColor : const Color(0xFFE2E8F0)),
+                      ),
+                      child: Icon(icon, color: isSelected ? Colors.white : const Color(0xFF94A3B8), size: 20),
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeroSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _selectedColor.withOpacity(0.1), 
-              borderRadius: BorderRadius.circular(16)
-            ),
-            child: Icon(_selectedIcon, color: _selectedColor, size: 32),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.template.title, 
-                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: const Color(0xFF0F172A))
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  "${widget.focusArea.toUpperCase()} • TARGET", 
-                  style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF94A3B8), fontWeight: FontWeight.w700, letterSpacing: 0.5)
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildColorPicker() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: _palette.map((color) => GestureDetector(
-        onTap: () => setState(() => _selectedColor = color),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: _selectedColor == color ? const Color(0xFF0F172A) : Colors.transparent,
-              width: 2.5,
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _palette.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 14),
+        itemBuilder: (context, index) {
+          final color = _palette[index];
+          bool isSelected = _selectedColor == color;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedColor = color),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 44,
+              decoration: BoxDecoration(
+                color: color, shape: BoxShape.circle,
+                border: Border.all(color: isSelected ? const Color(0xFF0F172A) : Colors.transparent, width: 3),
+              ),
+              child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
             ),
-          ),
-          child: _selectedColor == color ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
-        ),
-      )).toList(),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildTimeOptions() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Row(
       children: ["Anytime", "Morning", "Afternoon", "Evening"].map((time) {
-        bool isSelected = _selectedTime == time;
-        return GestureDetector(
-          onTap: () => setState(() => _selectedTime = time),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? _selectedColor : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              time, 
-              style: GoogleFonts.poppins(
-                color: isSelected ? Colors.white : const Color(0xFF475569), 
-                fontSize: 13, 
-                fontWeight: FontWeight.w600
-              )
+        bool isSelected = _selectedTimePeriod == time;
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() {
+              _selectedTimePeriod = time;
+              _remindersEnabled = false;
+              _pickedReminderTime = null;
+            }),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected ? _selectedColor : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Text(time, style: GoogleFonts.poppins(color: isSelected ? Colors.white : const Color(0xFF475569), fontSize: 11, fontWeight: FontWeight.w700)),
+              ),
             ),
           ),
         );
@@ -190,15 +341,88 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     );
   }
 
+ Future<void> _handleSaveProcess() async {
+    final String finalTitle = _titleController.text.trim();
+    if (finalTitle.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Habit name cannot be empty")));
+      return;
+    }
+
+    if (!isEditMode) {
+      bool exists = await _controller.doesHabitExist(finalTitle, _selectedTimePeriod);
+      if (exists) {
+        _showExistDialog();
+        return;
+      }
+    }
+
+    String? dbTime = _pickedReminderTime != null 
+      ? "${_pickedReminderTime!.hour.toString().padLeft(2, '0')}:${_pickedReminderTime!.minute.toString().padLeft(2, '0')}" 
+      : null;
+
+    final String? formattedEndDate = _endDate != null 
+        ? DateFormat('yyyy-MM-dd').format(_endDate!) 
+        : null;
+
+    int? habitId; 
+    try {
+      if (isEditMode) {
+        habitId = widget.existingHabit!['id'];
+        await _controller.updateHabit(
+          id: habitId!,
+          title: finalTitle,
+          focusArea: widget.focusArea,
+          timeOfDay: _selectedTimePeriod,
+          iconCode: _selectedIcon.codePoint,
+          colorHex: _selectedColor.value,
+          reminder: _remindersEnabled ? 1 : 0,
+          reminderTime: dbTime,
+          endDate: formattedEndDate,
+        );
+      } else {
+        habitId = await _controller.addCustomizedHabit(
+          title: finalTitle,
+          focusArea: widget.focusArea,
+          timeOfDay: _selectedTimePeriod,
+          iconCode: _selectedIcon.codePoint,
+          colorHex: _selectedColor.value,
+          reminder: _remindersEnabled ? 1 : 0,
+          reminderTime: dbTime,
+          endDate: formattedEndDate,
+          customStartDate: widget.initialStartDate,
+        );
+      }
+
+      if (habitId != null && habitId != 0) {
+        if (_remindersEnabled && _pickedReminderTime != null) {
+          await _notificationService.scheduleHabitReminder(
+            habitId, finalTitle, _pickedReminderTime!.hour, _pickedReminderTime!.minute
+          );
+        } else {
+          await _notificationService.cancelReminder(habitId);
+        }
+      }
+
+      if (mounted) {
+        Navigator.pop(context, true); 
+        if (!isEditMode) Navigator.pop(context, true); 
+      }
+    } catch (e) {
+      debugPrint("Save Error: $e");
+    }
+  }
+
+  Widget _buildSectionLabel(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Text(text, style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8), letterSpacing: 1.2)),
+  );
+
   Widget _buildSettingsToggle(String title, bool value, Function(bool) onChanged) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
-        Transform.scale(
-          scale: 0.8,
-          child: Switch.adaptive(value: value, activeColor: _selectedColor, onChanged: onChanged),
-        ),
+        Transform.scale(scale: 0.8, child: Switch.adaptive(value: value, activeColor: _selectedColor, onChanged: onChanged)),
       ],
     );
   }
@@ -207,10 +431,9 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     return InkWell(
       onTap: () async {
         final date = await showDatePicker(
-          context: context, 
-          initialDate: _endDate ?? DateTime.now().add(const Duration(days: 30)), 
-          firstDate: DateTime.now(), 
-          lastDate: DateTime(2100)
+          context: context,
+          initialDate: _endDate ?? DateTime.now().add(const Duration(days: 30)),
+          firstDate: DateTime.now(), lastDate: DateTime(2100)
         );
         if (date != null) setState(() => _endDate = date);
       },
@@ -221,10 +444,7 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text("End Date", style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
-              Text(
-                _endDate == null ? "Continuous habit" : "Ends on ${DateFormat('MMM dd, yyyy').format(_endDate!)}", 
-                style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF94A3B8))
-              ),
+              Text(_endDate == null ? "Continuous habit" : "Ends on ${DateFormat('MMM dd, yyyy').format(_endDate!)}", style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF94A3B8))),
             ],
           ),
           Icon(Icons.calendar_today_outlined, size: 18, color: _selectedColor),
@@ -233,103 +453,17 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
-    return ElevatedButton(
-      onPressed: () async {
-        // --- NEW CONSTRAINT CHECK ---
-        // Only check for duplicates if we are NOT in edit mode
-        if (!isEditMode) {
-          bool alreadyExists = await _controller.doesHabitExist(
-            widget.template.title, 
-            _selectedTime
-          );
-
-          if (alreadyExists) {
-            if (!mounted) return;
-            showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                title: Text("Already Exist", 
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w800, color: const Color(0xFF0F172A))),
-                content: Text(
-                  "You currently have this habit for the ${_selectedTime.toLowerCase()}, update the current one instead.",
-                  style: GoogleFonts.poppins(fontSize: 14, color: const Color(0xFF94A3B8)),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text("OK", style: GoogleFonts.poppins(color: _selectedColor, fontWeight: FontWeight.w800)),
-                  ),
-                ],
-              ),
-            );
-            return; // STOP execution here
-          }
-        }
-        // -----------------------------
-
-        if (isEditMode) {
-          await _controller.updateHabit(
-            id: widget.existingHabit!['id'],
-            title: widget.template.title,
-            focusArea: widget.focusArea,
-            timeOfDay: _selectedTime,
-            iconCode: _selectedIcon.codePoint,
-            colorHex: _selectedColor.value,
-            reminder: _remindersEnabled ? 1 : 0,
-            endDate: _endDate?.toIso8601String(),
-          );
-        } else {
-          await _controller.addCustomizedHabit(
-            title: widget.template.title,
-            focusArea: widget.focusArea,
-            timeOfDay: _selectedTime,
-            iconCode: _selectedIcon.codePoint,
-            colorHex: _selectedColor.value,
-            reminder: _remindersEnabled ? 1 : 0,
-            endDate: _endDate?.toIso8601String(),
-          );
-
-          // Show late-creation feedback
-          final hour = DateTime.now().hour;
-          bool willStartTomorrow = (_selectedTime == "Morning" && hour >= 12) ||
-                                   (_selectedTime == "Afternoon" && hour >= 17) ||
-                                   (_selectedTime == "Evening" && hour >= 22);
-
-          if (mounted && willStartTomorrow) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text("Habit starts tomorrow because today's $_selectedTime is over."),
-                backgroundColor: _selectedColor,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        }
-        
-        if (mounted) {
-          Navigator.pop(context, true);
-          if (!isEditMode) Navigator.pop(context, true); 
-        }
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _selectedColor,
-        foregroundColor: Colors.white,
-        minimumSize: const Size(double.infinity, 54),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 0,
-      ),
-      child: Text(
-        isEditMode ? "UPDATE HABIT" : "CREATE HABIT", 
-        style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 1)
+  void _showExistDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text("Already Exist", style: GoogleFonts.poppins(fontWeight: FontWeight.w800)),
+        content: Text("You currently have this habit for the ${_selectedTimePeriod.toString().toLowerCase()}."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text("OK", style: GoogleFonts.poppins(color: _selectedColor, fontWeight: FontWeight.w800))),
+        ],
       ),
     );
   }
-
-  Widget _buildSectionLabel(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: Text(text, style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8), letterSpacing: 1.2)),
-  );
 }

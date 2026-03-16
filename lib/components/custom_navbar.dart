@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class CustomNavBar extends StatelessWidget {
@@ -13,24 +14,18 @@ class CustomNavBar extends StatelessWidget {
 
   void _handleNavigation(BuildContext context, int index) {
     if (index == currentIndex) return;
-
-    // Trigger the callback first so the parent state updates
+    
+    HapticFeedback.lightImpact();
     onTap(index);
 
-    // Then handle the actual route switching
-    switch (index) {
-      case 0:
-        Navigator.pushReplacementNamed(context, '/dashboard');
-        break;
-      case 1:
-        Navigator.pushReplacementNamed(context, '/labs');
-        break;
-      case 2:
-        // Navigator.pushReplacementNamed(context, '/circles');
-        break;
-      case 3:
-        // Navigator.pushReplacementNamed(context, '/setup');
-        break;
+    final routes = {
+      0: '/dashboard',
+      1: '/streaks',
+      2: '/labs',
+    };
+
+    if (routes.containsKey(index)) {
+      Navigator.pushReplacementNamed(context, routes[index]!);
     }
   }
 
@@ -40,20 +35,21 @@ class CustomNavBar extends StatelessWidget {
     const Color slate400 = Color(0xFF94A3B8);
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFF1F5F9), width: 1)),
+        border: Border(
+          top: BorderSide(color: const Color(0xFFF1F5F9), width: 1.5),
+        ),
       ),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+        child: SizedBox(
+          height: 65,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(context, Icons.track_changes_rounded, "Target", 0, primaryGreen, slate400),
-              _buildNavItem(context, Icons.show_chart_rounded, "Labs", 1, primaryGreen, slate400),
-              _buildNavItem(context, Icons.group_rounded, "Circles", 2, primaryGreen, slate400),
-              _buildNavItem(context, Icons.settings_rounded, "Setup", 3, primaryGreen, slate400),
+              _buildNavItem(context, Icons.adjust_rounded, "Targets", 0, primaryGreen, slate400),
+              _buildNavItem(context, Icons.local_fire_department_rounded, "Streaks", 1, primaryGreen, slate400),
+              _buildNavItem(context, Icons.biotech_rounded, "Labs", 2, primaryGreen, slate400),
             ],
           ),
         ),
@@ -64,41 +60,24 @@ class CustomNavBar extends StatelessWidget {
   Widget _buildNavItem(BuildContext context, IconData icon, String label, int index, Color activeColor, Color inactiveColor) {
     final bool active = currentIndex == index;
     final color = active ? activeColor : inactiveColor;
-    
+
     return GestureDetector(
       onTap: () => _handleNavigation(context, index),
       behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 70, 
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedScale(
-              scale: active ? 1.15 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              child: Icon(icon, color: color, size: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 10,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              color: color,
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 10, 
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500, 
-                color: color,
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(top: 4),
-              height: 4,
-              width: active ? 4 : 0,
-              decoration: BoxDecoration(
-                color: activeColor, 
-                shape: BoxShape.circle,
-              ),
-            )
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

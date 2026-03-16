@@ -31,50 +31,45 @@ class DashboardController {
 
   /// Main data fetch: Retrieves habits, calculates missed status, and sorts them
   Future<List<Map<String, dynamic>>> getHabitsWithLogs({DateTime? date}) async {
-    final db = await dbHelper.database;
-    DateTime targetDate = date ?? DateTime.now();
-    String dateStr = DateFormat('yyyy-MM-dd').format(targetDate);
+  final db = await dbHelper.database;
+  // Use the provided date, OR today's date if null
+  DateTime targetDate = date ?? DateTime.now(); 
+  String dateStr = DateFormat('yyyy-MM-dd').format(targetDate);
 
-    final List<Map<String, dynamic>> habitsData = await db.rawQuery('''
-      SELECT h.*, l.isCompleted
-      FROM habits h
-      LEFT JOIN daily_logs l ON h.id = l.habitId AND l.date = ?
-      WHERE (h.endDate IS NULL OR h.endDate = '' OR date(h.endDate) >= date(?))
-      AND (l.isCompleted IS NULL OR l.isCompleted != -1)
-    ''', [dateStr, dateStr]);
+  final List<Map<String, dynamic>> habitsData = await db.rawQuery('''
+    SELECT h.*, l.isCompleted
+    FROM habits h
+    LEFT JOIN daily_logs l ON h.id = l.habitId AND l.date = ?
+    WHERE (h.endDate IS NULL OR h.endDate = '' OR date(h.endDate) >= date(?))
+    AND (h.startDate IS NULL OR h.startDate = '' OR date(h.startDate) <= date(?))
+    AND (l.isCompleted IS NULL OR l.isCompleted != -1)
+  ''', [dateStr, dateStr, dateStr]); 
 
-    // 1. Process and calculate status flags
-    List<Map<String, dynamic>> processedHabits = habitsData.map((habit) {
-      final bool isDone = habit['isCompleted'] == 1;
-      final String habitTime = habit['timeOfDay'] ?? "Morning";
-      
-      // Check if task is missed based on time of day
-      bool isMissed = _calculateIsMissed(isDone, habitTime, targetDate);
+  List<Map<String, dynamic>> processedHabits = habitsData.map((habit) {
+    final bool isDone = habit['isCompleted'] == 1;
+    final String habitTime = habit['timeOfDay'] ?? "Morning";
+    
+    // Pass targetDate here so "Missed" logic knows which day it's looking at
+    bool isMissed = _calculateIsMissed(isDone, habitTime, targetDate);
 
-      return {
-        ...habit,
-        'isCompleted': isDone,
-        'isMissed': isMissed,
-        'isFinished': isDone || isMissed, // Sorting helper
-      };
-    }).toList();
+    return {
+      ...habit,
+      'isCompleted': isDone,
+      'isMissed': isMissed,
+      'isFinished': isDone || isMissed,
+    };
+  }).toList();
 
-    // 2. Sorting Logic: Active tasks first, Finished/Missed tasks at the bottom
-    processedHabits.sort((a, b) {
-      int aStatus = a['isFinished'] ? 1 : 0;
-      int bStatus = b['isFinished'] ? 1 : 0;
-      
-      if (aStatus != bStatus) {
-        return aStatus.compareTo(bStatus);
-      }
-      
-      // Secondary sort: Keep consistent order by ID if status is same
-      return (a['id'] as int).compareTo(b['id'] as int);
-    });
+  // Sort and return...
+  processedHabits.sort((a, b) {
+    int aStatus = a['isFinished'] ? 1 : 0;
+    int bStatus = b['isFinished'] ? 1 : 0;
+    if (aStatus != bStatus) return aStatus.compareTo(bStatus);
+    return (a['id'] as int).compareTo(b['id'] as int);
+  });
 
-    return processedHabits;
-  }
-
+  return processedHabits;
+}
   /// Determines if a habit should be marked as 'Missed'
   bool _calculateIsMissed(bool isDone, String habitTime, DateTime targetDate) {
     if (isDone) return false;

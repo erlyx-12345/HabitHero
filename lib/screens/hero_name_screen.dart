@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dashboard_screen.dart';
 import '../controllers/user_controller.dart';
 
 class HeroNameScreen extends StatefulWidget {
-  final List<String> selectedTargets;
-  const HeroNameScreen({super.key, required this.selectedTargets});
+  const HeroNameScreen({super.key});
 
   @override
   State<HeroNameScreen> createState() => _HeroNameScreenState();
@@ -13,13 +13,15 @@ class HeroNameScreen extends StatefulWidget {
 
 class _HeroNameScreenState extends State<HeroNameScreen> {
   final TextEditingController _nameController = TextEditingController();
-  final UserController _userController = UserController(); // MVC Controller
+  final UserController _userController = UserController();
   bool _isLoading = false;
 
+  // Simple Light Mode Palette
   static const Color primaryGreen = Color(0xFF10B981);
-  static const Color slate900 = Color(0xFF0F172A);
-  static const Color slate500 = Color(0xFF64748B);
-  static const Color bgLight = Color(0xFFF8FAFC);
+  static const Color textMain = Color(0xFF1E293B);
+  static const Color textSub = Color(0xFF64748B);
+  static const Color bgWhite = Color(0xFFFFFFFF);
+  static const Color inputGrey = Color(0xFFF1F5F9);
 
   @override
   void dispose() {
@@ -30,39 +32,31 @@ class _HeroNameScreenState extends State<HeroNameScreen> {
   void _handleStartJourney() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showSnackBar("Every hero needs a name!", Colors.redAccent);
+      _showSnackBar("Please enter a name first.");
       return;
     }
 
     setState(() => _isLoading = true);
-
-    // Save via Controller
     bool success = await _userController.saveHeroName(name);
-
     setState(() => _isLoading = false);
 
     if (success && mounted) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => DashboardScreen(
-            userName: name,
-            selectedTargets: widget.selectedTargets,
-          ),
-        ),
+        MaterialPageRoute(builder: (context) => DashboardScreen(userName: name)),
       );
     } else {
-      _showSnackBar("Database error. Please try again.", Colors.redAccent);
+      _showSnackBar("Something went wrong. Try again.");
     }
   }
 
-  void _showSnackBar(String message, Color color) {
+  void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: GoogleFonts.poppins()),
-        backgroundColor: color,
+        content: Text(message, style: const TextStyle(fontSize: 14)),
+        backgroundColor: textMain,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(20),
       ),
     );
   }
@@ -70,124 +64,103 @@ class _HeroNameScreenState extends State<HeroNameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgLight,
+      backgroundColor: bgWhite,
+      // White status bar icons for light mode
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: bgWhite,
         elevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: slate900),
+          icon: const Icon(Icons.arrow_back, color: textMain, size: 22),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 30.0),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              Container(
-                height: 120,
-                width: 120,
-                decoration: BoxDecoration(
-                  color: primaryGreen.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(Icons.face_retouching_natural_rounded,
-                      size: 60, color: primaryGreen),
-                ),
-              ),
-              const SizedBox(height: 32),
+              
+              // Smaller, cleaner header
               Text(
-                "The Hero's Name",
+                "What's your name?",
                 style: GoogleFonts.poppins(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: slate900,
-                  letterSpacing: -0.5,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: textMain,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                "Every legend starts with a name. \nWhat should we call you?",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 15,
-                  color: slate500,
-                  height: 1.5,
+                "This is how you will appear in the app.",
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: textSub,
                 ),
               ),
-              const SizedBox(height: 48),
+              
+              const SizedBox(height: 32),
+
+              // Simple Input Box
               Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: slate900.withOpacity(0.04),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+                  color: inputGrey,
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: TextField(
                   controller: _nameController,
                   autofocus: true,
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: slate900,
+                  style: GoogleFonts.inter(
+                    color: textMain,
+                    fontSize: 16,
                   ),
-                  textAlign: TextAlign.center,
-                  decoration: InputDecoration(
-                    hintText: "Your name here...",
-                    hintStyle: GoogleFonts.poppins(
-                      color: slate500.withOpacity(0.4),
-                      fontWeight: FontWeight.w500,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 22),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      borderSide: const BorderSide(color: primaryGreen, width: 2),
-                    ),
+                  decoration: const InputDecoration(
+                    hintText: "Enter your name...",
+                    hintStyle: TextStyle(color: Colors.black26),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
               ),
-              const SizedBox(height: 60),
-              SizedBox(
-                width: double.infinity,
-                height: 65,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleStartJourney,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryGreen,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(22),
+              
+              const Spacer(),
+
+              // Simple, solid button
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleStartJourney,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryGreen,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              "Start My Journey",
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
                             ),
-                            const SizedBox(width: 12),
-                            const Icon(Icons.rocket_launch_rounded),
-                          ],
-                        ),
+                          )
+                        : const Text(
+                            "Continue",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
                 ),
               ),
             ],
