@@ -32,6 +32,9 @@ class _LabScreenState extends State<LabScreen> {
   List<Map<String, dynamic>> _chartData = [];
   List<Map<String, dynamic>> _difficultyData = [];
   Map<String, double> _timeOfDayStats = {};
+  Map<String, dynamic> _aegisData = {};
+  Map<String, dynamic>? _aegisInsight; // Add this line
+
 
   @override
   void initState() {
@@ -39,39 +42,43 @@ class _LabScreenState extends State<LabScreen> {
     _loadData();
   }
 
-  Future<void> _loadData({bool isBackground = false}) async {
-    if (!isBackground) {
-      setState(() => _isLoading = true);
-    }
-
-    try {
-      await _controller.syncStreaks();
-
-      final results = await Future.wait([
-        _controller.getCompletionRate(),
-        _controller.getEliteHabits(),
-        _controller.getFilteredChartData(_activeTab),
-        _controller.getMomentumScore(),
-        _controller.getHabitDifficulty(),
-        _controller.getTimeOfDayComparison(),
-      ]);
-
-      if (mounted) {
-        setState(() {
-          _score = results[0] as double;
-          _chartData = results[2] as List<Map<String, dynamic>>;
-          _momentum = results[3] as double;
-          _difficultyData = results[4] as List<Map<String, dynamic>>;
-          _timeOfDayStats = results[5] as Map<String, double>;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error loading analytics: $e");
-      if (mounted) setState(() => _isLoading = false);
-    }
+ Future<void> _loadData({bool isBackground = false}) async {
+  if (!isBackground) {
+    setState(() => _isLoading = true);
   }
 
+  try {
+    await _controller.syncStreaks();
+
+    // 1. Load standard analytics
+    final results = await Future.wait([
+      _controller.getCompletionRate(),
+      _controller.getFilteredChartData(_activeTab),
+      _controller.getMomentumScore(),
+      _controller.getHabitDifficulty(),
+      _controller.getTimeOfDayComparison(),
+    ]);
+
+    // 2. Load Aegis Insights separately
+    final insightData = await _controller.getAegisInsights();
+
+    if (mounted) {
+      setState(() {
+        _score = results[0] as double;
+        _chartData = results[1] as List<Map<String, dynamic>>;
+        _momentum = results[2] as double;
+        _difficultyData = results[3] as List<Map<String, dynamic>>;
+        _timeOfDayStats = results[4] as Map<String, double>;
+        _aegisInsight = insightData; // Assigned to the variable you declared in state
+        _isLoading = false;
+      });
+    }
+  } catch (e) {
+    debugPrint("Error loading analytics: $e");
+    if (mounted) setState(() => _isLoading = false);
+  }
+}
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,7 +97,7 @@ class _LabScreenState extends State<LabScreen> {
                     sliver: SliverToBoxAdapter(child: _buildHeader()),
                   ),
                   SliverToBoxAdapter(child: _buildHeroCard()),
-                  SliverToBoxAdapter(child: _buildMomentumBadge()),
+                  SliverToBoxAdapter(child: _buildAegisCard()),
                   SliverPadding(
                     padding: const EdgeInsets.all(24),
                     sliver: SliverToBoxAdapter(child: _buildChartSection()),
@@ -295,34 +302,151 @@ Widget _buildHeroCard() {
       ),
     );
   }
+ 
+ Widget _buildAegisCard() {
+  if (_aegisInsight == null) return const SizedBox.shrink();
 
-  Widget _buildMomentumBadge() {
-    bool isPositive = _momentum >= 0;
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.only(top: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.withOpacity(0.15)),
+  final Color accent = _aegisInsight!['accentColor'] ?? primaryGreen;
+  final String status = _aegisInsight!['status'] ?? "ANALYZING";
+  final String analysis = _aegisInsight!['analysis'] ?? "Calibrating behavioral patterns...";
+
+  return Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(top: 10, bottom: 24),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      // Sharp edges with a very subtle professional border
+      border: Border.all(color: slate100, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: slate900.withOpacity(0.03),
+          blurRadius: 20,
+          offset: const Offset(0, 10),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(isPositive ? Icons.trending_up : Icons.trending_down,
-                color: isPositive ? const Color(0xFF1B4332) : Colors.red[700], size: 16),
-            const SizedBox(width: 10),
-            Text(
-              "Momentum Delta: ${isPositive ? '+' : ''}${(_momentum * 100).toStringAsFixed(1)}%",
-              style: GoogleFonts.poppins(
-                  fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF333333)),
-            )
-          ],
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Top Accent Bar (Sharp)
+        Container(
+          height: 4,
+          width: double.infinity,
+          color: accent,
         ),
-      ),
-    );
-  }
+        
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  // Minimalist Icon Container
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: accent.withOpacity(0.1),
+                      borderRadius: BorderRadius.zero, // Keep it sharp
+                    ),
+                    child: Icon(Icons.insights_rounded, color: accent, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "AEGIS INTELLIGENCE",
+                        style: GoogleFonts.poppins(
+                          color: slate500,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      Text(
+                        status,
+                        style: GoogleFonts.poppins(
+                          color: slate900,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              // Sublte secondary status indicator
+              Container(
+                height: 8,
+                width: 8,
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Thin separation line
+        Container(
+          height: 1,
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          color: slate100,
+        ),
+
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 25, 24),
+          child: Text(
+            analysis,
+            style: GoogleFonts.poppins(
+              color: slate900.withOpacity(0.7),
+              fontSize: 14,
+              height: 1.7,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+
+        // Bottom Bar (Executive detail)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+          color: bgLight,
+          child: Row(
+            children: [
+              Text(
+                "SYSTEM DIAGNOSTIC: OPTIMAL",
+                style: GoogleFonts.poppins(
+                  color: slate500.withOpacity(0.6),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
+              const Spacer(),
+              Icon(Icons.arrow_forward_ios_rounded, color: slate500.withOpacity(0.3), size: 10),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildStatItem(String label, String value) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: GoogleFonts.poppins(color: const Color(0xFF475569), fontSize: 8, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 4),
+      Text(value, style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+    ],
+  );
+}
 
   Widget _buildChartSection() {
     return Container(
@@ -444,8 +568,6 @@ Widget _buildHeroCard() {
       ],
     );
   }
-
- 
 
   Widget _buildDifficultyRow(Map<String, dynamic> data) {
     // Get difficulty directly from our reversed SQL query

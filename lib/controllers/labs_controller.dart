@@ -1,9 +1,12 @@
 import '../services/database_helper.dart';
 import '../models/habit_model.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 
 class LabController {
   final dbHelper = DatabaseHelper.instance;
+
+  
 
   String _getDateString(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
 
@@ -309,4 +312,65 @@ class LabController {
       "completionRate": total == 0 ? 0 : ((total - missed) / total) * 100,
     };
   }
+
+  Future<Map<String, dynamic>> getAegisInsights() async {
+  try {
+    final db = await dbHelper.database;
+    
+    // 1. Find the specific habit causing the most trouble
+    final List<Map<String, dynamic>> logs = await db.rawQuery('''
+      SELECT h.title, COUNT(*) as miss_count 
+      FROM daily_logs l 
+      JOIN habits h ON l.habitId = h.id 
+      WHERE l.isCompleted = 0 OR l.isCompleted = -1 
+      GROUP BY h.id 
+      ORDER BY miss_count DESC LIMIT 1
+    ''');
+
+    // If no habits or logs exist yet, return a default state instead of hanging
+    if (logs.isEmpty) {
+      return {
+        "status": "CALIBRATING",
+        "analysis": "Aegis is monitoring your patterns. Complete more habits to generate behavioral insights.",
+        "accentColor": const Color(0xFF64748B), // Slate Grey
+        "target": "your routine",
+      };
+    }
+
+    final double momentum = await getMomentumScore();
+    final String strugglingHabit = logs.first['title'];
+    
+    String status = "ON TRACK";
+    String analysis = "";
+    Color accent = const Color(0xFF10B981); // Green
+
+    // 2. Dynamic Sentence Building
+    if (momentum > 0.05) {
+      status = "IMPROVING";
+      accent = const Color(0xFF34D399);
+      analysis = "You're getting stronger this week. Even with '$strugglingHabit' being a bit tough, your overall consistency is climbing. Keep this pace!";
+    } else if (momentum < -0.05) {
+      status = "SLIPPING";
+      accent = const Color(0xFFEF4444); // Red
+      analysis = "It looks like '$strugglingHabit' is slowing you down lately. Don't let one hard habit break your whole streak—try making it smaller tomorrow.";
+    } else {
+      status = "STEADY";
+      analysis = "Your rhythm is solid. '$strugglingHabit' is your main focus right now. If you can figure it out, your progress will hit a new level.";
+    }
+
+    return {
+      "status": status,
+      "analysis": analysis,
+      "accentColor": accent,
+      "target": strugglingHabit,
+    };
+  } catch (e) {
+    // Fallback if database fails
+    return {
+      "status": "STANDBY",
+      "analysis": "Aegis Intelligence is currently offline. Please restart the application to restore insights.",
+      "accentColor": const Color(0xFF64748B),
+    };
+  }
+}
 }

@@ -103,6 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> _allHabits = [];
   String? _displayName;
   int _navIndex = 0;
+  int? _userLevel;
   bool _isLoading = true;
 
   final ScrollController _dateScrollController = ScrollController();
@@ -120,14 +121,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Color slate400 = const Color(0xFF94A3B8);
   final Color slate100 = const Color(0xFFF1F5F9);
 
-  @override
-void initState() {
-  super.initState();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  _displayName = widget.userName;
-  _initAppData(); // This now handles the scroll internally
-  _fetchUserData();
-}
+ @override
+  void initState() {
+    super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _displayName = widget.userName;
+    _initAppData();
+    _fetchUserData(); // This now fetches name, path, AND level
+  }
+
+  // UPDATED FETCH METHOD
+  Future<void> _fetchUserData() async {
+    final userData = await ProfileController.fetchUserData();
+    if (userData != null && mounted) {
+      setState(() {
+        _displayName = userData['name'];
+        _profilePath = userData['profilePath'];
+        // Retrieve the selectedLevel from the database map
+        _userLevel = userData['selectedLevel'] ?? 1; 
+      });
+    }
+  }
+
   void _scrollToToday({bool animated = true}) {
   if (!_dateScrollController.hasClients) return;
 
@@ -795,80 +810,93 @@ Widget build(BuildContext context) {
 }
 
   Widget _buildHeader() {
-  const Color primaryGreen = Color(0xFF10B981);
-  const Color slate400 = Color(0xFF94A3B8);
-  const Color slate900 = Color(0xFF0F172A);
+    const Color slate400 = Color(0xFF94A3B8);
+    const Color slate900 = Color(0xFF0F172A);
 
-  return Row(
-    children: [
-      GestureDetector(
-        onTap: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-          );
-          _fetchUserData();
-        },
-        child: Container(
-          width: 52,
-          height: 52,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: primaryGreen.withOpacity(0.2),
-              width: 2,
-            ),
-          ),
-          child: CircleAvatar(
-            backgroundColor: primaryGreen.withOpacity(0.1),
-            backgroundImage: (_profilePath != null && _profilePath!.isNotEmpty)
-                ? FileImage(File(_profilePath!))
-                : const NetworkImage(
-                    "https://ui-avatars.com/api/?name=User&background=10B981&color=fff",
-                  ) as ImageProvider,
+    // Border library defining colors for each level
+    final List<Map<String, dynamic>> borderLibrary = [
+      {'level': 1, 'colors': [Colors.brown, Colors.blueGrey]},
+      {'level': 2, 'colors': [const Color(0xFF3B82F6), const Color(0xFF2DD4BF)]},
+      {'level': 3, 'colors': [const Color(0xFFF59E0B), const Color(0xFFFCD34D)]},
+      {'level': 4, 'colors': [const Color(0xFF10B981), const Color(0xFFD1FAE5)]},
+      {'level': 5, 'colors': [const Color(0xFF8B5CF6), const Color(0xFFD8B4FE)]},
+      {'level': 6, 'colors': [const Color(0xFFEF4444), const Color(0xFFFCA5A5)]},
+      {'level': 7, 'colors': [const Color(0xFFFFD700), const Color(0xFF8B5CF6), const Color(0xFF0F172A)]},
+    ];
+
+    // Get the colors for the current level retrieved from DB
+    var currentBorder = borderLibrary.firstWhere(
+      (b) => b['level'] == (_userLevel ?? 1),
+      orElse: () => borderLibrary[0],
+    );
+
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () async {
+            // When returning from ProfileScreen, we refresh the data
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            );
+            _fetchUserData(); 
+          },
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // The Custom Painter now uses the reactive _userLevel
+              CustomPaint(
+                painter: MLBBBorderPainter(
+                  colors: currentBorder['colors'],
+                  level: _userLevel ?? 1,
+                ),
+                size: const Size(64, 64),
+              ),
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: Colors.white,
+                child: CircleAvatar(
+                  radius: 22,
+                  backgroundColor: const Color(0xFFF8FAFC),
+                  backgroundImage: (_profilePath != null && _profilePath!.isNotEmpty)
+                      ? FileImage(File(_profilePath!))
+                      : const NetworkImage(
+                          "https://ui-avatars.com/api/?name=User&background=10B981&color=fff",
+                        ) as ImageProvider,
+                ),
+              ),
+            ],
           ),
         ),
-      ),
-      const SizedBox(width: 14),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Welcome back,",
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: slate400,
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Welcome back,",
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: slate400,
+                ),
               ),
-            ),
-            Text(
-              _displayName ?? 'Hero',
-              style: GoogleFonts.poppins(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: slate900,
-                height: 1.2,
+              Text(
+                _displayName ?? 'Hero',
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: slate900,
+                  height: 1.2,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-      _buildProgressRing(),
-    ],
-  );
-}
-
-Future<void> _fetchUserData() async {
-  final userData = await ProfileController.fetchUserData();
-  if (userData != null && mounted) {
-    setState(() {
-      _displayName = userData['name'];
-      _profilePath = userData['profilePath'];
-    });
+        _buildProgressRing(),
+      ],
+    );
   }
-}
 
   Widget _buildProgressRing() {
     double progress = _controller.calculateProgress(_allHabits);

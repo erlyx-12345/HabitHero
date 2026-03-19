@@ -5,34 +5,40 @@ import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/labs_screen.dart';
-import 'screens/streaks_screen.dart'; // Import your new screen
+import 'screens/streaks_screen.dart'; 
 
 import 'services/database_helper.dart';
 import 'services/notification_service.dart';
 
 void main() async {
+  // 1. Critical for any background service or database access
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize background services
-  await AndroidAlarmManager.initialize();
-  
-  final notificationService = NotificationService();
-  await notificationService.init();
-  
-  // Requesting permissions on startup is critical for Android 14+
-  await notificationService.requestPermissions();
-
-  final db = await DatabaseHelper.instance.database;
-  final List<Map<String, dynamic>> user = await db.query('users', limit: 1);
-
   String? userName;
-  Widget initialScreen;
+  Widget initialScreen = const WelcomeScreen();
 
-  if (user.isNotEmpty) {
-    userName = user.first['name'] ?? "Hero";
-    initialScreen = DashboardScreen(userName: userName!);
-  } else {
-    initialScreen = const WelcomeScreen();
+  try {
+    // 2. Initialize Services in parallel or sequence with safety
+    await AndroidAlarmManager.initialize();
+    
+    final notificationService = NotificationService();
+    await notificationService.init();
+    
+    // Note: On some Android 14+ devices, requestPermissions() can hang the UI 
+    // if not handled properly. Wrapped in try-catch to be safe.
+    await notificationService.requestPermissions();
+
+    // 3. Database Check
+    final db = await DatabaseHelper.instance.database;
+    final List<Map<String, dynamic>> user = await db.query('users', limit: 1);
+
+    if (user.isNotEmpty) {
+      userName = user.first['name'] ?? "Hero";
+      initialScreen = DashboardScreen(userName: userName!);
+    }
+  } catch (e) {
+    // If anything fails, we log it and default to WelcomeScreen instead of a black screen
+    debugPrint("HabitHero Init Error: $e");
   }
 
   runApp(
@@ -55,7 +61,6 @@ class HabitHeroApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // We use a constant fallback to ensure the route builder doesn't fail
     final String currentUserName = userName ?? "Hero";
 
     return MaterialApp(
@@ -66,15 +71,15 @@ class HabitHeroApp extends StatelessWidget {
           seedColor: const Color(0xFF1DB97F),
           primary: const Color(0xFF1DB97F),
         ),
-        textTheme: GoogleFonts.poppinsTextTheme(Theme.of(context).textTheme),
+        // Important: Specify the theme context correctly for Google Fonts
+        textTheme: GoogleFonts.poppinsTextTheme(ThemeData.light().textTheme),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF8FAFB),
       ),
       home: startScreen,
-      // Registered routes matching your CustomNavBar logic
       routes: {
         '/dashboard': (context) => DashboardScreen(userName: currentUserName),
-        '/streaks': (context) => const StreaksScreen(), // Added Streaks route
+        '/streaks': (context) => const StreaksScreen(), 
         '/labs': (context) => const LabScreen(),
       },
     );

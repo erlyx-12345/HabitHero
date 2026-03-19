@@ -2,10 +2,10 @@ name: habit_hero
 description: "A new Flutter project."
 publish_to: 'none'
 version: 1.0.0+1
+
 environment:
   sdk: ^3.10.7
 
-  
 dependencies:
   flutter:
     sdk: flutter
@@ -17,22 +17,31 @@ dependencies:
   google_fonts: ^6.2.1
   shared_preferences: ^2.2.2
   fl_chart: ^0.70.0
-  flutter_local_notifications: ^17.0.0
   timezone: ^0.9.2
   flutter_timezone: ^5.0.1
   permission_handler: ^11.3.1
-  android_alarm_manager_plus: ^5.0.0
-  image_picker: ^1.2.1
- 
-
+  flutter_local_notifications: ^17.2.2
+  image_picker: ^1.0.7
+  android_alarm_manager_plus: ^4.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
 flutter:
   uses-material-design: true
   assets:
     - assets/illustration.png
     - assets/welcome_image.png
     - assets/habits.json
+    - assets/icon.png  # Changed from app_icon.png to icon.png
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon.png" # Changed from app_icon.png to icon.png
+  min_sdk_android: 21
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/icon.png" # Changed from app_icon.png to icon.png
