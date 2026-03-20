@@ -15,20 +15,6 @@ Second Semester, Academic Year 2025–2026
 
 **HabitHero**
 
-**ALBERT JHUN CANEDO**
-
-**JOHN MARK PAJA**
-
-**STEPHEN PUSTA**
-
-**CHRISTIAN VILLE RANQUE**
-
-**ARLENE ROLLORATA**
-
-**JOSHUA SERRANO**
-
-**MARL LAURENCE SORIANO**
-
 # **1\. Introduction**
 
 ## **1.1 Purpose**

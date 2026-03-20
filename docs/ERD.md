@@ -15,19 +15,6 @@ Second Semester, Academic Year 2025–2026
 
 **HabitHero**
 
-**ALBERT JHUN CANEDO**
-
-**JOHN MARK PAJA**
-
-**STEPHEN PUSTA** 
-
-**CHRISTIAN VILLE RANQUE**
-
-**ARLENE ROLLORATA**
-
-**JOSHUA SERRANO**
-
-**MARL LAURENCE SORIANO**
 
 # **1\. Database Overview**
 
@@ -181,8 +168,8 @@ In HabitHero, this means there is only one database connection used by all parts
 * A static instance is created and shared.
 
 * The database is initialized only once.
+**![][assets/screenshots/Picture3]**
 
-![][image2]
 
 In the code the **instance** represents the single shared **DatabaseHelper** used across the application, while **\_database** stores the active database connection for reuse. The private **\_init()** constructor prevents multiple objects from being created, enforcing the Singleton pattern. The **get database** method returns the existing connection or creates it if it does not exist. This ensures the app uses one consistent database connection, improving performance and resource management.
 
@@ -202,7 +189,6 @@ When the app starts, the DatabaseHelper checks if the database already exists. I
 
 4. The onCreate function runs to create tables (first run only).
 
-![][image3]
 
 Database initialization is important because it ensures that the required tables exist before any data is saved. It helps prevent application crashes that may occur when the system tries to access missing tables or structures. Initialization also prepares the database for CRUD (Create, Read, Update, Delete) operations, allowing the app to function properly. Additionally, it supports future upgrades through database versioning, making it easier to modify the database structure without losing existing data.
 
@@ -224,8 +210,6 @@ Each table stores specific data needed by the HabitHero app.
 The DatabaseHelper provides methods to create, read, update, and delete data.
 
 **Category CRUD**
-
-**![][image4]**
 
 **createCategory()**
 
@@ -250,8 +234,6 @@ The DatabaseHelper provides methods to create, read, update, and delete data.
 
 **Habit CRUD Methods**
 
-**![][image5]**
-
 **createHabit()**
 
 * Saves a new habit to the database  
@@ -273,8 +255,6 @@ The DatabaseHelper provides methods to create, read, update, and delete data.
 * Used when user deletes a habit
 
 **Daily Log CRUD Methods**
-
-**![][image6]**
 
 **createDailyLog()**
 
@@ -298,8 +278,6 @@ The DatabaseHelper provides methods to create, read, update, and delete data.
 * Used when incorrect data is entered
 
 **Reminder CRUD Methods**
-
-**![][image7]**
 
 **createReminder()**
 
@@ -329,7 +307,7 @@ CRUD method signatures define how the app interacts with the database. They allo
 
 ## **5.2 CREATE TABLE SQL**
 
-## **![][assets/screenshots/ERD]**
+## **![][assets/screenshots/Picture2]**
 
 ## **5.3 Migration Strategy**
 
