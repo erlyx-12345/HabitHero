@@ -49,7 +49,8 @@ The Dashboard is the main screen of HabitHero. It displays all your habits for t
 
 |   SCREENSHOT — HOME / LIST SCREEN |
 | ----- |
-| ![Home](../assets/screenshots/homeScreen.png)  **Step-by-step:** 1\. On launch, the Dashboard shows your name, a progress ring (0%), and today's date highlighted in the date scroll bar at the top. 2\. Tap any date in the scroll bar to view habits for that day. Tap ALL, **MORNING**, **AFTERNOON**, or **EVENING** to filter habits by time of day. 3\. Tap MARK AS DONE on a habit card to log it as complete. Tap \+ NEW in the bottom-right corner to add a new habit. |
+| ![Home](../assets/screenshots/homeScreen.png) 
+**Step-by-step:** 1\. On launch, the Dashboard shows your name, a progress ring (0%), and today's date highlighted in the date scroll bar at the top. 2\. Tap any date in the scroll bar to view habits for that day. Tap ALL, **MORNING**, **AFTERNOON**, or **EVENING** to filter habits by time of day. 3\. Tap MARK AS DONE on a habit card to log it as complete. Tap \+ NEW in the bottom-right corner to add a new habit. |
 
 ## **3.2 Create New Habit**
 
@@ -57,7 +58,10 @@ Use the Create Habit screen to add a new habit to your daily routine. You can ch
 
 |   SCREENSHOT — CREATE NEW RECORD |
 | ----- |
-| ![CREATE RECORD](../assets/screenshots/createRecord.png)  **Step-by-step:** 1\. Tap \+ NEW on the Dashboard. The SELECT FOCUS screen appears showing all available focus areas. Tap a focus area or tap NEW FOCUS to create a custom one. 2\. Select a habit template from the list (e.g., Go sugar-free, Limit caffeine intake) or tap Create Custom Habit at the top to build a fully custom habit. 	 ![CREATE RECORD](../assets/screenshots/customize.png) **Step-by-step:** 3\. On the CUSTOMIZE screen, enter a Habit Name, choose an icon, select a color, set a Schedule (Anytime, Morning, Afternoon, Evening), optionally toggle Set a Reminder, set an End Date, then tap CREATE HABIT. |
+| ![CREATE RECORD](../assets/screenshots/createRecord.png)  
+**Step-by-step:** 1\. Tap \+ NEW on the Dashboard. The SELECT FOCUS screen appears showing all available focus areas. Tap a focus area or tap NEW FOCUS to create a custom one. 2\. Select a habit template from the list (e.g., Go sugar-free, Limit caffeine intake) or tap Create Custom Habit at the top to build a fully custom habit. 	 
+![CREATE RECORD](../assets/screenshots/customize.png) 
+**Step-by-step:** 3\. On the CUSTOMIZE screen, enter a Habit Name, choose an icon, select a color, set a Schedule (Anytime, Morning, Afternoon, Evening), optionally toggle Set a Reminder, set an End Date, then tap CREATE HABIT. |
 
 ## **3.3 Habit Details Screen**
 
@@ -65,7 +69,8 @@ The Habit Details screen shows all information about a specific habit including 
 
 |   SCREENSHOT — VIEW RECORD DETAILS |
 | ----- |
-| ![VIEW RECORD](../assets/screenshots/viewRecord.png)  **Step-by-step:** 1\. Tap the Streaks icon in the bottom navigation bar. The Streaks screen shows your Current Streak, Habit Finished count, and a list of ALL HABIT STATS for each habit. 2\. Tap any habit in the ALL HABIT STATS list to open its detailed analytics panel showing Longest Streak, Current Streak, Days Missed, Consistency %, and Total Accomplished days. 3\. Tap Done to close the analytics panel and return to the Streaks overview. |
+| ![VIEW RECORD](../assets/screenshots/viewRecord.png)  
+**Step-by-step:** 1\. Tap the Streaks icon in the bottom navigation bar. The Streaks screen shows your Current Streak, Habit Finished count, and a list of ALL HABIT STATS for each habit. 2\. Tap any habit in the ALL HABIT STATS list to open its detailed analytics panel showing Longest Streak, Current Streak, Days Missed, Consistency %, and Total Accomplished days. 3\. Tap Done to close the analytics panel and return to the Streaks overview. |
 
 ## **3.4 Edit Habit**
 
@@ -73,7 +78,8 @@ You can update any habit's title, focus area, time of day, icon, color, or end d
 
 |   SCREENSHOT — EDIT RECORD |
 | ----- |
-| ![EDIT RECORD](../assets/screenshots/editRecord.png) **Step-by-step:** 1\. On the Dashboard, tap the three-dot menu (⋯) on any habit card. A bottom sheet appears with options: Edit Configuration, Skip for Today, and End Habit Series. 2\. Tap Edit Configuration. The EDIT HABIT screen opens showing the current Habit Name, Visual Style (icon and color picker), Schedule, and Advanced Settings (reminder time and end date). 3\. Make your changes — update the name, select a new color, change the schedule, adjust the reminder time, or update the end date — then tap UPDATE HABIT to save. |
+| ![EDIT RECORD](../assets/screenshots/editRecord.png) 
+**Step-by-step:** 1\. On the Dashboard, tap the three-dot menu (⋯) on any habit card. A bottom sheet appears with options: Edit Configuration, Skip for Today, and End Habit Series. 2\. Tap Edit Configuration. The EDIT HABIT screen opens showing the current Habit Name, Visual Style (icon and color picker), Schedule, and Advanced Settings (reminder time and end date). 3\. Make your changes — update the name, select a new color, change the schedule, adjust the reminder time, or update the end date — then tap UPDATE HABIT to save. |
 
 ## **3.5 Delete Habit / Skip Habit**
 
@@ -81,7 +87,9 @@ HabitHero gives you two ways to manage a habit you no longer want to track. Skip
 
 |   SCREENSHOT — DELETE HABIT / SKIP HABIT |
 | ----- |
-| ![DELETE RECORD](../assets/screenshots/deleteRecord.png) ![DELETE RECORD](../assets/screenshots/deleteRecord_2.png)    **Step-by-step:** 1\. On the Dashboard, tap the three-dot menu (⋯) on any habit card. A bottom sheet appears with three options: Edit Configuration, Skip for Today, and End Habit Series. 2\. To skip the habit for today only, tap Skip for Today — the habit disappears from today's Dashboard and will reappear automatically tomorrow with no effect on your streak. To retire the habit permanently, tap End Habit Series — a "Retire Habit?" confirmation dialog appears explaining that the habit stops from today onwards but all past logs and streaks remain safe. 3\. On the "Retire Habit?" dialog, tap STOP FROM TODAY to retire the habit, or tap KEEP TRACKING to cancel and continue tracking it. |
+| ![DELETE RECORD](../assets/screenshots/deleteRecord.png) 
+! [DELETE RECORD](../assets/screenshots/deleteRecord_2.png)    
+**Step-by-step:** 1\. On the Dashboard, tap the three-dot menu (⋯) on any habit card. A bottom sheet appears with three options: Edit Configuration, Skip for Today, and End Habit Series. 2\. To skip the habit for today only, tap Skip for Today — the habit disappears from today's Dashboard and will reappear automatically tomorrow with no effect on your streak. To retire the habit permanently, tap End Habit Series — a "Retire Habit?" confirmation dialog appears explaining that the habit stops from today onwards but all past logs and streaks remain safe. 3\. On the "Retire Habit?" dialog, tap STOP FROM TODAY to retire the habit, or tap KEEP TRACKING to cancel and continue tracking it. |
 
 # **4\. Troubleshooting**
 

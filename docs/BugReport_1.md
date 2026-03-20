@@ -48,7 +48,7 @@ Second Semester, Academic Year 2025–2026
 
 ## **Description**
 
-## After completing the Create Habit flow and selecting CREATE HABIT, the Dashboard incorrectly displays “No habits for this selection.” even though the habit was successfully saved. This is confirmed when the user tries to create the same habit again and receives the “Already Exist” dialog. The root cause is in DashboardController.getHabitsWithLogs(), where the query excludes habits whose related daily\_log entry has isCompleted \= \-1. Since newly created habits may be assigned this value when created after the valid time period has already ended, the condition (l.isCompleted IS NULL OR l.isCompleted \!= \-1) filters them out, causing the Dashboard to fail to display the habit on the same day it was created.
+After completing the Create Habit flow and selecting CREATE HABIT, the Dashboard incorrectly displays “No habits for this selection.” even though the habit was successfully saved. This is confirmed when the user tries to create the same habit again and receives the “Already Exist” dialog. The root cause is in DashboardController.getHabitsWithLogs(), where the query excludes habits whose related daily\_log entry has isCompleted \= \-1. Since newly created habits may be assigned this value when created after the valid time period has already ended, the condition (l.isCompleted IS NULL OR l.isCompleted \!= \-1) filters them out, causing the Dashboard to fail to display the habit on the same day it was created.
 
 ## **Steps to Reproduce**
 
