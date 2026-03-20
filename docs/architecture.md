@@ -28,59 +28,69 @@ This approach avoids mixing responsibilities and keeps the system clean and main
 ---
 
 ## System Structure
-User Interface (Screens)
-↓
-Controllers
-↓
-Services
-↓
-Data Sources (Database / API)
-↓
-Models
 
+`User Interface (Screens)`
+
+↓
+
+`Controllers`
+
+↓
+
+`Services`
+
+↓
+
+`Data Sources (Database / API)`
+
+↓
+
+`Models`
 
 Each layer communicates in a step-by-step flow, which makes the system easier to understand and debug.
 
 ---
 
 ## Project Structure
+
+```
 lib/
 ├── main.dart
 ├── components/
-│ └── custom_navbar.dart
+│   └── custom_navbar.dart
 ├── controllers/
-│ ├── createhabit_controller.dart
-│ ├── dashboard_controller.dart
-│ ├── labs_controller.dart
-│ ├── profile_controller.dart
-│ ├── streaks_controller.dart
-│ ├── target_controller.dart
-│ ├── user_controller.dart
-│ └── profile/
-│ └── profile_controller.dart
+│   ├── createhabit_controller.dart
+│   ├── dashboard_controller.dart
+│   ├── labs_controller.dart
+│   ├── profile_controller.dart
+│   ├── streaks_controller.dart
+│   ├── target_controller.dart
+│   ├── user_controller.dart
+│   └── profile/
+│       └── profile_controller.dart
 ├── models/
-│ ├── daily_log.dart
-│ ├── habit.dart
-│ ├── habit_model.dart
-│ └── user.dart
+│   ├── daily_log.dart
+│   ├── habit.dart
+│   ├── habit_model.dart
+│   └── user.dart
 ├── screens/
-│ ├── create_habit_screen.dart
-│ ├── dashboard_screen.dart
-│ ├── habit_details_screen.dart
-│ ├── hero_name_screen.dart
-│ ├── home_screen.dart
-│ ├── labs_screen.dart
-│ ├── profile_screen.dart
-│ ├── streaks_screen.dart
-│ ├── welcome_screen.dart
-│ └── profile/
-│ └── profile_screen.dart
+│   ├── create_habit_screen.dart
+│   ├── dashboard_screen.dart
+│   ├── habit_details_screen.dart
+│   ├── hero_name_screen.dart
+│   ├── home_screen.dart
+│   ├── labs_screen.dart
+│   ├── profile_screen.dart
+│   ├── streaks_screen.dart
+│   ├── welcome_screen.dart
+│   └── profile/
+│       └── profile_screen.dart
 └── services/
-├── database_helper.dart
-├── habit_service.dart
-├── notification_service.dart
-└── quote_api_service.dart
-
+    ├── database_helper.dart
+    ├── habit_service.dart
+    ├── notification_service.dart
+    └── quote_api_service.dart
+```
 
 The structure groups related files together, which improves readability and keeps development organized.
 
@@ -99,8 +109,6 @@ They allow users to:
 - Track daily activity
 - Manage their profile
 
----
-
 ### Controllers
 
 Controllers act as the middle layer between the UI and the data logic.
@@ -113,8 +121,6 @@ They are responsible for:
 - Updating the UI when data changes
 
 This keeps the UI simple and focused only on presentation.
-
----
 
 ### Services
 
@@ -129,8 +135,6 @@ They are responsible for:
 
 This layer centralizes all data operations.
 
----
-
 ### Models
 
 Models define the structure of the data used in the application.
@@ -142,8 +146,6 @@ They represent:
 - Daily tracking records
 
 Models help ensure data is consistent across the system.
-
----
 
 ### Components
 
@@ -159,20 +161,32 @@ These are used across multiple screens to:
 ## Data Flow
 
 The application follows a clear flow of data:
-User Action
-↓
-UI (Screen)
-↓
-Controller
-↓
-Service
-↓
-Database / API
-↓
-Return Data
-↓
-UI updates
 
+`User Action`
+
+↓
+
+`UI (Screen)`
+
+↓
+
+`Controller`
+
+↓
+
+`Service`
+
+↓
+
+`Database / API`
+
+↓
+
+`Return Data`
+
+↓
+
+`UI updates`
 
 This flow ensures that each part of the system has a clear responsibility.
 
@@ -204,13 +218,19 @@ The application uses a **RESTful API** (HTTP-based communication).
 - Receives responses in JSON format
 - JSON is parsed and converted into usable objects before being displayed in the UI
 
----
-
 ### Flow
-App → Service → HTTP Request → API → JSON Response → UI
 
+`App`
 
----
+→ `Service`
+
+→ `HTTP Request`
+
+→ `API`
+
+→ `JSON Response`
+
+→ `UI`
 
 ### Purpose
 
@@ -229,20 +249,14 @@ The API is mainly used to:
 - Dart
 - Flutter
 
----
-
 ### Database
 
 - SQLite (`sqflite`)
-
----
 
 ### API
 
 - RESTful API
 - `http` package
-
----
 
 ### Tools
 
