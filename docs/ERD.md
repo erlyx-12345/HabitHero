@@ -168,7 +168,15 @@ In HabitHero, this means there is only one database connection used by all parts
 * A static instance is created and shared.
 
 * The database is initialized only once.
-(../assets/screenshots/Picture3.png)
+
+**How It Works**
+
+* The constructor is private so no other class can create a new instance.
+
+* A static instance is created and shared.
+
+* The database is initialized only once.
+![How it works](../assets/screenshots/Picture3.png)
 
 
 In the code the **instance** represents the single shared **DatabaseHelper** used across the application, while **\_database** stores the active database connection for reuse. The private **\_init()** constructor prevents multiple objects from being created, enforcing the Singleton pattern. The **get database** method returns the existing connection or creates it if it does not exist. This ensures the app uses one consistent database connection, improving performance and resource management.
@@ -307,7 +315,7 @@ CRUD method signatures define how the app interacts with the database. They allo
 
 ## **5.2 CREATE TABLE SQL**
 
-(../assets/screenshots/Picture2.png)
+![CREATE TABLE SQL](../assets/screenshots/Picture2.png)
 
 ## **5.3 Migration Strategy**
 
