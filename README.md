@@ -87,18 +87,45 @@ The app is developed for the **Advance Mobile Application Development** course a
 
 ---
 
-## Folder Structure
+## Project Structure
 
 ```
 lib/
-  main.dart
-  components/      # Reusable UI controls
-  controllers/     # State handlers and logic
-  models/          # Data models (Habit, History, Quote)
-  screens/         # App pages (Home, Habits List, Stats)
-  services/        # API + DB services
-assets/
-  habits.json      # initial dataset sample
+ ┣ main.dart
+ ┣ components/
+ ┃ ┗ custom_navbar.dart
+ ┣ controllers/
+ ┃ ┣ createhabit_controller.dart
+ ┃ ┣ dashboard_controller.dart
+ ┃ ┣ labs_controller.dart
+ ┃ ┣ profile_controller.dart
+ ┃ ┣ streaks_controller.dart
+ ┃ ┣ target_controller.dart
+ ┃ ┣ user_controller.dart
+ ┃ ┗ profile/
+ ┃   ┗ profile_controller.dart
+ ┣ models/
+ ┃ ┣ daily_log.dart
+ ┃ ┣ habit.dart
+ ┃ ┣ habit_model.dart
+ ┃ ┗ user.dart
+ ┣ screens/
+ ┃ ┣ create_habit_screen.dart
+ ┃ ┣ dashboard_screen.dart
+ ┃ ┣ habit_details_screen.dart
+ ┃ ┣ hero_name_screen.dart
+ ┃ ┣ home_screen.dart
+ ┃ ┣ labs_screen.dart
+ ┃ ┣ profile_screen.dart
+ ┃ ┣ streaks_screen.dart
+ ┃ ┣ welcome_screen.dart
+ ┃ ┗ profile/
+ ┃   ┗ profile_screen.dart
+ ┣ services/
+ ┃ ┣ database_helper.dart
+ ┃ ┣ habit_service.dart
+ ┃ ┣ notification_service.dart
+ ┃ ┗ quote_api_service.dart
 ```
 
 ---
