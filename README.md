@@ -36,6 +36,25 @@ The app is developed for the **Advance Mobile Application Development** course a
 
 ---
 
+## Documentation
+
+All project documents can be accessed below:
+
+- 🔗 [API Documentation](./docs/API.md)
+- 🔗 [Architecture Documentation](./docs/Architecture.md)
+- 🔗 [Bug Report 1](./docs/BugReport_1.md)
+- 🔗 [Bug Report 2](./docs/BugReport_2.md)
+- 🔗 [ERD Diagram](./docs/ERD.md)
+- 🔗 [Project Proposal](./docs/Project%20Proposal.md)
+- 🔗 [Software Requirements Specification](./docs/Software-Requirements-Specification.md)
+- 🔗 [Sprint 1](./docs/Sprint_1.md)
+- 🔗 [Sprint 2](./docs/Sprint_2.md)
+- 🔗 [Sprint 3](./docs/Sprint-3%20(DONE).md)
+- 🔗 [Test Case Document](./docs/Test_Case.md)
+- 🔗 [Test Plan](./docs/Test_Plan.md)
+- 🔗 [User Manual](./docs/UserManual.md)
+
+---
 ## Implementation Summary
 
 1. Flutter architecture: UI in `lib/screens`, widgets in `lib/components`, services in `lib/services`, models in `lib/models`.
