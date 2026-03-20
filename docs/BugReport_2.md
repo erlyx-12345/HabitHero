@@ -64,7 +64,7 @@ Actual: The habit is not saved. The Dashboard does not show the new habit after 
 
 ## **Screenshots / Evidence**
 
-## **![][image1]**
+![Evidence 1](../assets/screenshots/evidence_1.png)
 
 ## **Environment**
 
@@ -106,9 +106,7 @@ Actual: The app navigates to the Dashboard or Home screen. All user data (name, 
 
 ## **Screenshots / Evidence**
 
-## **![][image2]![][image3]**
-
-## 
+![Evidence 2](../assets/screenshots/evidence_2.png)
 
 ## 
 
