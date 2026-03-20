@@ -141,7 +141,8 @@ Define each database table/entity below. Add more tables as needed.
 
 # **4\. ERD Diagram**
 
-![][image1]
+
+![ERD Diagram](../assets/screenshots/ERD.png)
 
 # **5\. SQLite Implementation Notes**
 
@@ -328,7 +329,7 @@ CRUD method signatures define how the app interacts with the database. They allo
 
 ## **5.2 CREATE TABLE SQL**
 
-## **![][image8]**
+## **![][assets/screenshots/ERD]**
 
 ## **5.3 Migration Strategy**
 
