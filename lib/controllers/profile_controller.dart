@@ -30,24 +30,41 @@ class ProfileController {
 
  static Future<int> getAchievementLevel() async {
   try {
-    final LabController labs = LabController();
-    final List<Map<String, dynamic>> chartData = await labs.getFilteredChartData("Overall");
+    final db = DatabaseHelper.instance;
 
-    if (chartData.isEmpty) return 1;
+    // Helper to check if consistency was met EVERY day for 'X' days
+    Future<bool> maintained(double threshold, int days) async {
+      for (int i = 0; i < days; i++) {
+        // Assuming getCompletionRate returns the rate for a specific day offset
+        // or you can modify your SQL to check the min() over a range
+        double dailyRate = await db.getCompletionRate(days: i + 1); 
+        if (dailyRate < threshold) return false;
+      }
+      return true;
+    }
 
-    double currentConsistency = chartData.last['rate']; 
-    debugPrint("Current Consistency: ${(currentConsistency * 100).toStringAsFixed(0)}%");
-
-    // UPDATED TIERS TO MATCH YOUR 7 LEVELS
-    if (currentConsistency >= 0.95) return 7; // 95% - Gold/Purple/Black
-    if (currentConsistency >= 0.85) return 6; // 85% - Red
-    if (currentConsistency >= 0.70) return 5; // 70% - Purple
-    if (currentConsistency >= 0.50) return 4; // 50% - Green
-    if (currentConsistency >= 0.30) return 3; // 30% - Orange
-    if (currentConsistency >= 0.20) return 2; // 20% - Blue
+    // Check from hardest to easiest
+    // 98% for 2 weeks (14 days)
+    if (await maintained(0.98, 14)) return 7;
     
-    return 1; // Default - Brown/Grey
+    // 85% for 2 weeks (14 days)
+    if (await maintained(0.85, 14)) return 6;
+    
+    // 70% for 1.5 weeks (10 days)
+    if (await maintained(0.70, 10)) return 5;
+    
+    // 50% for 1 week (7 days)
+    if (await maintained(0.50, 7)) return 4;
+    
+    // 30% for 5 days
+    if (await maintained(0.30, 5)) return 3;
+    
+    // 20% for 3 days
+    if (await maintained(0.20, 3)) return 2;
+
+    return 1; // Default
   } catch (e) {
+    debugPrint("Achievement Error: $e");
     return 1;
   }
 }
@@ -94,6 +111,14 @@ static Future<Map<String, dynamic>?> fetchUserData() async {
   } catch (e) {
     debugPrint("Error updating name: $e");
     return false;
+  }
+}
+
+static Future<void> totalSystemWipe() async {
+  try {
+    await DatabaseHelper.instance.deleteFullDatabase();
+  } catch (e) {
+    debugPrint("Error during total wipe: $e");
   }
 }
 

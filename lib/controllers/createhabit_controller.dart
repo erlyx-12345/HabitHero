@@ -15,91 +15,79 @@ class CreateHabitController {
     return await _service.getFocusAreas();
   }
 
+  Future<void> createCustomCategory(String name, int iconCode, int colorHex) async {
+    await dbHelper.insertCustomFocusArea(name, iconCode, colorHex);
+  }
 
- // Change your method to this:
-Future<void> createCustomCategory(String name, int iconCode, int colorHex) async {
-  // Pass all THREE arguments to the dbHelper
-  await dbHelper.insertCustomFocusArea(name, iconCode, colorHex);
-}
+  Future<void> _syncNotification(
+    int id,
+    String title,
+    int reminderActive,
+    String? timeStr,
+  ) async {
+    if (reminderActive == 1 && timeStr != null && timeStr.isNotEmpty) {
+      try {
+        final parts = timeStr.split(':');
+        final int hour = int.parse(parts[0]);
+        final int minute = int.parse(parts[1]);
 
-Future<void> _syncNotification(
-  int id,
-  String title,
-  int reminderActive,
-  String? timeStr,
-) async {
+        await _notificationService.scheduleHabitReminder(
+          id,
+          title,
+          hour,
+          minute,
+        );
+      } catch (e) {
+        debugPrint("Notification Sync Error: $e");
+      }
+    } else {
+      await _notificationService.cancelReminder(id);
+    }
+  }
 
-  if (reminderActive == 1 && timeStr != null && timeStr.isNotEmpty) {
+  Future<int> addCustomizedHabit({
+    required String title,
+    required String focusArea,
+    required String timeOfDay,
+    required int iconCode,
+    required int colorHex,
+    required int reminder,
+    String? reminderTime,
+    String? endDate,
+    DateTime? customStartDate,
+  }) async {
+    final db = await dbHelper.database;
 
-    try {
+    // Use the custom date if provided (e.g., from a calendar picker)
+    // Otherwise, start with today's date
+    DateTime startDateTime = customStartDate ?? DateTime.now();
 
-      final parts = timeStr.split(':');
-
-      final int hour = int.parse(parts[0]);
-      final int minute = int.parse(parts[1]);
-
-      await _notificationService.scheduleHabitReminder(
-        id,
-        title,
-        hour,
-        minute,
-      );
-
-    } catch (e) {
-      print("Notification Sync Error: $e");
+    // LOGIC FIX: If the user creates a habit for a time slot that has already passed today,
+    // move the start date to tomorrow so it isn't recorded as a "missed" habit.
+    if (customStartDate == null && _isTimeSlotPassed(timeOfDay)) {
+      startDateTime = startDateTime.add(const Duration(days: 1));
     }
 
-  } else {
+    final String formattedStartDate = DateFormat('yyyy-MM-dd').format(startDateTime);
 
-    await _notificationService.cancelReminder(id);
+    final int habitId = await db.insert('habits', {
+      'focusArea': focusArea,
+      'title': title,
+      'timeOfDay': timeOfDay,
+      'iconCode': iconCode,
+      'colorHex': colorHex,
+      'reminder': reminder,
+      'reminderTime': reminderTime,
+      'endDate': endDate,
+      'startDate': formattedStartDate,
+      'currentTier': 1,
+      'streak': 0,
+      'resistance': 50,
+    });
 
+    _syncNotification(habitId, title, reminder, reminderTime);
+    return habitId;
   }
-}
-
- // Inside addCustomizedHabit in CreateHabitController.dart
-
- Future<int> addCustomizedHabit({
-  required String title,
-  required String focusArea,
-  required String timeOfDay,
-  required int iconCode,
-  required int colorHex,
-  required int reminder,
-  String? reminderTime,
-  String? endDate,
-  DateTime? customStartDate, 
-}) async {
-  final db = await dbHelper.database;
-
-  // If a custom date is passed (from the dashboard), use it exactly.
-  // Otherwise, use today.
-  DateTime startDateTime = customStartDate ?? DateTime.now();
-  
-  // Only auto-shift to tomorrow if NO specific date was selected from the dashboard
-  if (customStartDate == null && _isTimeSlotPassed(timeOfDay)) {
-    startDateTime = startDateTime.add(const Duration(days: 1));
-  }
-  
-  final String formattedStartDate = DateFormat('yyyy-MM-dd').format(startDateTime);
-
-  final int habitId = await db.insert('habits', {
-    'focusArea': focusArea,
-    'title': title,
-    'timeOfDay': timeOfDay,
-    'iconCode': iconCode,
-    'colorHex': colorHex,
-    'reminder': reminder,
-    'reminderTime': reminderTime,
-    'endDate': endDate,
-    'startDate': formattedStartDate, 
-    'currentTier': 1,
-    'streak': 0,
-    'resistance': 50,
-  });
-
-  _syncNotification(habitId, title, reminder, reminderTime);
-  return habitId;
-}
 
   Future<int> updateHabit({
     required int id,
@@ -113,7 +101,7 @@ Future<void> _syncNotification(
     String? endDate,
   }) async {
     final db = await dbHelper.database;
-    
+
     int count = await db.update(
       'habits',
       {
@@ -130,17 +118,12 @@ Future<void> _syncNotification(
       whereArgs: [id],
     );
 
-    // --- TRIGGER NOTIFICATION UPDATE HERE ---
-    // We cancel the old one and set the new one automatically
     _syncNotification(id, title, reminder, reminderTime);
-
     return count;
   }
 
   Future<void> deleteHabit(int habitId) async {
     final db = await dbHelper.database;
-    
-    // Cancel the notification first so it doesn't fire for a deleted habit
     await _notificationService.cancelReminder(habitId);
     
     await db.transaction((txn) async {
@@ -149,14 +132,23 @@ Future<void> _syncNotification(
     });
   }
 
+  /// Checks if the current time is past the deadline for the chosen time slot.
   bool _isTimeSlotPassed(String timeOfDay) {
     final now = DateTime.now();
     final hour = now.hour;
+    
     switch (timeOfDay.toLowerCase()) {
-      case 'morning': return hour >= 12;
-      case 'afternoon': return hour >= 17;
-      case 'evening': return hour >= 22;
-      default: return false;
+      case 'morning': 
+        // If it's 12:00 PM or later, the morning slot is gone.
+        return hour >= 12;
+      case 'afternoon': 
+        // If it's 6:00 PM (18:00) or later, the afternoon slot is gone.
+        return hour >= 18;
+      case 'evening': 
+        // If it's near midnight (e.g., 11 PM), the evening slot is gone.
+        return hour >= 23;
+      default: 
+        return false;
     }
   }
 

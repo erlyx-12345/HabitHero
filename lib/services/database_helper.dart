@@ -21,8 +21,8 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      // Version 12 includes both selectedLevel and maxLevel columns
-      version: 12, 
+      // Version 13 includes the isSkipped column in daily_logs
+      version: 13, 
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -31,7 +31,7 @@ class DatabaseHelper {
   // --- DATABASE CREATION ---
 
   Future _createDB(Database db, int version) async {
-    // Users table with all needed columns for the profile system
+    // Users table
     await db.execute('''
       CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -61,13 +61,14 @@ class DatabaseHelper {
       )
     ''');
 
-    // Logs table for tracking completion
+    // Logs table - includes isSkipped for new installations
     await db.execute('''
       CREATE TABLE daily_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         habitId INTEGER,
         date TEXT,
         isCompleted INTEGER,
+        isSkipped INTEGER DEFAULT 0,
         FOREIGN KEY (habitId) REFERENCES habits (id) ON DELETE CASCADE,
         UNIQUE(habitId, date)
       )
@@ -128,13 +129,22 @@ class DatabaseHelper {
       } catch (e) { debugPrint("Migration Error v10: $e"); }
     }
 
-    // UPDATED: Version 12 adds both border-related columns
     if (oldVersion < 12) {
       try {
         await db.execute('ALTER TABLE users ADD COLUMN selectedLevel INTEGER DEFAULT 1');
         await db.execute('ALTER TABLE users ADD COLUMN maxLevel INTEGER DEFAULT 1');
       } catch (e) {
         debugPrint("Migration Error v12: $e");
+      }
+    }
+
+    // Version 13 Migration: Adds the isSkipped column to existing daily_logs table
+    if (oldVersion < 13) {
+      try {
+        await db.execute('ALTER TABLE daily_logs ADD COLUMN isSkipped INTEGER DEFAULT 0');
+        debugPrint("Migration Success v13: Added isSkipped column");
+      } catch (e) {
+        debugPrint("Migration Error v13: $e");
       }
     }
   }
@@ -152,6 +162,7 @@ class DatabaseHelper {
   }
 
   // --- HABIT METHODS ---
+
 
   Future<List<Map<String, dynamic>>> getAllHabits() async {
     final db = await instance.database;
@@ -214,4 +225,26 @@ class DatabaseHelper {
       whereArgs: [name],
     );
   }
+
+  // Inside DatabaseHelper class
+Future<void> deleteFullDatabase() async {
+  try {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, 'habithero.db');
+    
+    // 1. Close the connection if it's open
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+    
+    // 2. Delete the physical file from the phone storage
+    await deleteDatabase(path);
+    debugPrint("Database deleted successfully.");
+  } catch (e) {
+    debugPrint("Error deleting database: $e");
+    rethrow;
+  }
+}
+
 }

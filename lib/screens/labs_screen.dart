@@ -34,6 +34,7 @@ class _LabScreenState extends State<LabScreen> {
   Map<String, double> _timeOfDayStats = {};
   Map<String, dynamic> _aegisData = {};
   Map<String, dynamic>? _aegisInsight; // Add this line
+  Map<String, dynamic>? _neuralInsight;
 
 
   @override
@@ -42,7 +43,7 @@ class _LabScreenState extends State<LabScreen> {
     _loadData();
   }
 
- Future<void> _loadData({bool isBackground = false}) async {
+  Future<void> _loadData({bool isBackground = false}) async {
   if (!isBackground) {
     setState(() => _isLoading = true);
   }
@@ -50,17 +51,15 @@ class _LabScreenState extends State<LabScreen> {
   try {
     await _controller.syncStreaks();
 
-    // 1. Load standard analytics
     final results = await Future.wait([
       _controller.getCompletionRate(),
       _controller.getFilteredChartData(_activeTab),
       _controller.getMomentumScore(),
       _controller.getHabitDifficulty(),
       _controller.getTimeOfDayComparison(),
+      _controller.getAegisInsights(),      // Index 5
+      _controller.getNeuralLabInsights(),   // Index 6
     ]);
-
-    // 2. Load Aegis Insights separately
-    final insightData = await _controller.getAegisInsights();
 
     if (mounted) {
       setState(() {
@@ -69,7 +68,11 @@ class _LabScreenState extends State<LabScreen> {
         _momentum = results[2] as double;
         _difficultyData = results[3] as List<Map<String, dynamic>>;
         _timeOfDayStats = results[4] as Map<String, double>;
-        _aegisInsight = insightData; // Assigned to the variable you declared in state
+        
+        // Separating the two data sources
+        _aegisInsight = results[5] as Map<String, dynamic>;
+        _neuralInsight = results[6] as Map<String, dynamic>;
+        
         _isLoading = false;
       });
     }
@@ -78,48 +81,63 @@ class _LabScreenState extends State<LabScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 }
-  
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgLight,
-      bottomNavigationBar: CustomNavBar(currentIndex: 2, onTap: (i) {}),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
-        child: _isLoading
-            ? Center(child: CircularProgressIndicator(color: primaryGreen))
-            : CustomScrollView(
-                key: const ValueKey("lab_content_scroll"),
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
-                    sliver: SliverToBoxAdapter(child: _buildHeader()),
-                  ),
-                  SliverToBoxAdapter(child: _buildHeroCard()),
-                  SliverToBoxAdapter(child: _buildAegisCard()),
-                  SliverPadding(
-                    padding: const EdgeInsets.all(24),
-                    sliver: SliverToBoxAdapter(child: _buildChartSection()),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        const SizedBox(height: 32),
-                        _buildLabel("DIFFICULTY INDEX (LOAD)"),
-                        const SizedBox(height: 16),
-                        ..._difficultyData.map((d) => _buildDifficultyRow(d)),
-                        const SizedBox(height: 120),
-                      ]),
-                    ),
-                  )
-                ],
-              ),
-      ),
-    );
-  }
 
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: bgLight,
+    bottomNavigationBar: CustomNavBar(currentIndex: 2, onTap: (i) {}),
+    body: AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      child: _isLoading
+          ? Center(child: CircularProgressIndicator(color: primaryGreen))
+          : CustomScrollView(
+              key: const ValueKey("lab_content_scroll"),
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(24, 60, 24, 20),
+                  sliver: SliverToBoxAdapter(child: _buildHeader()),
+                ),
+                SliverToBoxAdapter(child: _buildHeroCard()),
+                
+                // Keep your original Aegis Card exactly where it was
+                SliverToBoxAdapter(child: _buildAegisCard()), 
+
+                SliverPadding(
+                  padding: const EdgeInsets.all(24),
+                  sliver: SliverToBoxAdapter(child: _buildChartSection()),
+                ),
+                
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      const SizedBox(height: 32),
+                      _buildLabel("SMART STEPS"),
+                      const SizedBox(height: 16),
+                      
+                      // NEW SYSTEM ADAPTATION TILE
+                      _buildNeuralInsightTile(
+                        title: _neuralInsight?['title'] ?? "System Adaptation",
+                        data: _neuralInsight,
+                        accent: _neuralInsight?['accentColor'] ?? const Color(0xFF8B5CF6),
+                        icon: Icons.auto_awesome_rounded,
+                      ),
+
+                      const SizedBox(height: 32),
+                      _buildLabel("DIFFICULTY INDEX (LOAD)"),
+                      const SizedBox(height: 16),
+                      ..._difficultyData.map((d) => _buildDifficultyRow(d)),
+                      const SizedBox(height: 120),
+                    ]),
+                  ),
+                )
+              ],
+            ),
+    ),
+  );
+}
  Widget _buildHeader() {
     return Padding(
       // Top 60 keeps it below the status bar, Left 24 aligns with your cards
@@ -307,148 +325,86 @@ Widget _buildHeroCard() {
   if (_aegisInsight == null) return const SizedBox.shrink();
 
   final Color accent = _aegisInsight!['accentColor'] ?? primaryGreen;
-  final String status = _aegisInsight!['status'] ?? "ANALYZING";
-  final String analysis = _aegisInsight!['analysis'] ?? "Calibrating behavioral patterns...";
+  final String status = _aegisInsight!['status'] ?? "Checking...";
+  final String analysis = _aegisInsight!['analysis'] ?? "";
+  final List<String> targets = List<String>.from(_aegisInsight!['targets'] ?? []);
 
-  return Container(
-    width: double.infinity,
-    margin: const EdgeInsets.only(top: 10, bottom: 24),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      // Sharp edges with a very subtle professional border
-      border: Border.all(color: slate100, width: 1.5),
-      boxShadow: [
-        BoxShadow(
-          color: slate900.withOpacity(0.03),
-          blurRadius: 20,
-          offset: const Offset(0, 10),
+  // BOLDING LOGIC
+  List<TextSpan> spans = [];
+  String remainingText = analysis;
+
+  for (String target in targets) {
+    if (remainingText.contains(target)) {
+      int index = remainingText.indexOf(target);
+      spans.add(TextSpan(text: remainingText.substring(0, index)));
+      spans.add(TextSpan(
+        text: target,
+        style: GoogleFonts.poppins(
+          fontWeight: FontWeight.w900,
+          color: Colors.black,
         ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Top Accent Bar (Sharp)
-        Container(
-          height: 4,
-          width: double.infinity,
-          color: accent,
+      ));
+      remainingText = remainingText.substring(index + target.length);
+    }
+  }
+  spans.add(TextSpan(text: remainingText));
+
+  return Center(
+    child: Container(
+      width: MediaQuery.of(context).size.width * 0.85, 
+      margin: const EdgeInsets.symmetric(vertical: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          left: BorderSide(color: accent, width: 6), // Simple thick bar
         ),
-        
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  // Minimalist Icon Container
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: accent.withOpacity(0.1),
-                      borderRadius: BorderRadius.zero, // Keep it sharp
-                    ),
-                    child: Icon(Icons.insights_rounded, color: accent, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "AEGIS INTELLIGENCE",
-                        style: GoogleFonts.poppins(
-                          color: slate500,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      Text(
-                        status,
-                        style: GoogleFonts.poppins(
-                          color: slate900,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              // Sublte secondary status indicator
-              Container(
-                height: 8,
-                width: 8,
-                decoration: BoxDecoration(
-                  color: accent,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
-        ),
-
-        // Thin separation line
-        Container(
-          height: 1,
-          width: double.infinity,
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          color: slate100,
-        ),
-
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 25, 24),
-          child: Text(
-            analysis,
-            style: GoogleFonts.poppins(
-              color: slate900.withOpacity(0.7),
-              fontSize: 14,
-              height: 1.7,
-              fontWeight: FontWeight.w500,
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text(
+              status.toUpperCase(),
+              style: GoogleFonts.poppins(
+                color: accent,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1,
+              ),
             ),
           ),
-        ),
-
-        // Bottom Bar (Executive detail)
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-          color: bgLight,
-          child: Row(
-            children: [
-              Text(
-                "SYSTEM DIAGNOSTIC: OPTIMAL",
+          
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 20, 20),
+            child: RichText(
+              textAlign: TextAlign.left,
+              text: TextSpan(
                 style: GoogleFonts.poppins(
-                  color: slate500.withOpacity(0.6),
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1,
+                  color: const Color(0xFF334155),
+                  fontSize: 14,
+                  height: 1.6,
+                  fontWeight: FontWeight.w400,
                 ),
+                children: spans,
               ),
-              const Spacer(),
-              Icon(Icons.arrow_forward_ios_rounded, color: slate500.withOpacity(0.3), size: 10),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }
 
-Widget _buildStatItem(String label, String value) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: GoogleFonts.poppins(color: const Color(0xFF475569), fontSize: 8, fontWeight: FontWeight.w800)),
-      const SizedBox(height: 4),
-      Text(value, style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-    ],
-  );
-}
-
-  Widget _buildChartSection() {
+Widget _buildChartSection() {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 24, 16, 16),
       decoration: BoxDecoration(
@@ -673,7 +629,140 @@ Widget _buildStatItem(String label, String value) {
       ),
     );
   }
- 
+
+
+Widget _buildNeuralInsightTile({
+  required String title,
+  required Map<String, dynamic>? data,
+  required Color accent,
+  required IconData icon,
+}) {
+  if (data == null) return const SizedBox.shrink();
+
+  final String analysis = data['analysis'] ?? "";
+  final String highlight = data['highlight'] ?? "";
+
+  // Using standard Material colors to avoid "undefined" errors
+  final Color textSecondary = Colors.grey.shade500;
+  final Color borderStroke = Colors.grey.shade200;
+
+  return Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      // Clean, thin border for a high-end feel
+      border: Border.all(color: borderStroke, width: 1),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 14, color: accent),
+                  const SizedBox(width: 8),
+                  Text(
+                    title.toUpperCase(),
+                    style: GoogleFonts.plusJakartaSans(
+                      color: const Color(0xFF0F172A), // Deep Navy/Slate 900
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+              // Tiny, professional badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  "TIP",
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 7, 
+                    fontWeight: FontWeight.w900, 
+                    color: accent,
+                  ),
+                ),
+              )
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Using your existing dynamic rich text builder
+          _buildDynamicRichText(analysis, highlight, accent),
+          
+          const SizedBox(height: 12),
+          
+          // Simple, minimal footer
+          Row(
+            children: [
+              Text(
+                "",
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: textSecondary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Divider(
+                  thickness: 1,
+                  color: borderStroke.withOpacity(0.5),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// Separate helper for cleaner code
+Widget _buildDynamicRichText(String text, String highlight, Color accent) {
+  if (highlight.isEmpty || !text.contains(highlight)) {
+    return Text(text, style: GoogleFonts.poppins(color: slate500, fontSize: 13, height: 1.6));
+  }
+
+  final List<String> parts = text.split(highlight);
+  return RichText(
+    text: TextSpan(
+      style: GoogleFonts.poppins(color: slate500, fontSize: 13, height: 1.6, fontWeight: FontWeight.w500),
+      children: [
+        TextSpan(text: parts[0]),
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: accent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              highlight,
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.w800,
+                color: slate900,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+        TextSpan(text: parts.length > 1 ? parts[1] : ""),
+      ],
+    ),
+  );
+}
  void _showDiagnosticSheet(BuildContext context, Map<String, dynamic> data) async {
   final analysis = await _controller.getHabitAnalysis(data['id'] ?? 0);
   if (!mounted) return;
