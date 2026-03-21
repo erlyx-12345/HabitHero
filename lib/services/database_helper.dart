@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -20,24 +21,28 @@ class DatabaseHelper {
     
     return await openDatabase(
       path,
-      version: 10, 
+      // Version 13 includes the isSkipped column in daily_logs
+      version: 13, 
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
 
-  Future<int> deleteCustomFocusArea(String name) async {
-    final db = await instance.database;
-    return await db.delete(
-      'custom_focus_areas',
-      where: 'name = ?',
-      whereArgs: [name],
-    );
-  }
+  // --- DATABASE CREATION ---
 
   Future _createDB(Database db, int version) async {
-    await db.execute('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, profilePath TEXT)');
+    // Users table
+    await db.execute('''
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        name TEXT NOT NULL, 
+        profilePath TEXT,
+        selectedLevel INTEGER DEFAULT 1,
+        maxLevel INTEGER DEFAULT 1
+      )
+    ''');
 
+    // Habits table
     await db.execute('''
       CREATE TABLE habits (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,19 +61,28 @@ class DatabaseHelper {
       )
     ''');
 
+    // Logs table - includes isSkipped for new installations
     await db.execute('''
       CREATE TABLE daily_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         habitId INTEGER,
         date TEXT,
         isCompleted INTEGER,
+        isSkipped INTEGER DEFAULT 0,
         FOREIGN KEY (habitId) REFERENCES habits (id) ON DELETE CASCADE,
         UNIQUE(habitId, date)
       )
     ''');
 
-    await db.execute('CREATE TABLE targets (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL UNIQUE)');
+    // Targets table
+    await db.execute('''
+      CREATE TABLE targets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        title TEXT NOT NULL UNIQUE
+      )
+    ''');
 
+    // Custom Focus Areas table
     await db.execute('''
       CREATE TABLE custom_focus_areas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,6 +92,8 @@ class DatabaseHelper {
       )
     ''');
   }
+
+  // --- MIGRATION LOGIC ---
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 6) {
@@ -98,27 +114,42 @@ class DatabaseHelper {
     if (oldVersion < 8) {
       try {
         await db.execute('ALTER TABLE custom_focus_areas ADD COLUMN colorHex INTEGER');
-      } catch (e) {
-        print("Column colorHex already exists: $e");
-      }
+      } catch (e) { debugPrint("Migration Error v8: $e"); }
     }
 
     if (oldVersion < 9) {
       try {
         await db.execute('ALTER TABLE habits ADD COLUMN startDate TEXT');
-      } catch (e) {
-        print("Column startDate already exists: $e");
-      }
+      } catch (e) { debugPrint("Migration Error v9: $e"); }
     }
 
     if (oldVersion < 10) {
       try {
         await db.execute('ALTER TABLE users ADD COLUMN profilePath TEXT');
+      } catch (e) { debugPrint("Migration Error v10: $e"); }
+    }
+
+    if (oldVersion < 12) {
+      try {
+        await db.execute('ALTER TABLE users ADD COLUMN selectedLevel INTEGER DEFAULT 1');
+        await db.execute('ALTER TABLE users ADD COLUMN maxLevel INTEGER DEFAULT 1');
       } catch (e) {
-        print("Column profilePath already exists: $e");
+        debugPrint("Migration Error v12: $e");
+      }
+    }
+
+    // Version 13 Migration: Adds the isSkipped column to existing daily_logs table
+    if (oldVersion < 13) {
+      try {
+        await db.execute('ALTER TABLE daily_logs ADD COLUMN isSkipped INTEGER DEFAULT 0');
+        debugPrint("Migration Success v13: Added isSkipped column");
+      } catch (e) {
+        debugPrint("Migration Error v13: $e");
       }
     }
   }
+
+  // --- USER METHODS ---
 
   Future<int> updateUserProfile(String name, String? imagePath) async {
     final db = await database;
@@ -130,19 +161,8 @@ class DatabaseHelper {
     );
   }
 
-  Future<int> insertCustomFocusArea(String name, int iconCode, int colorHex) async {
-    final db = await database;
-    return await db.insert('custom_focus_areas', {
-      'name': name,
-      'iconCode': iconCode,
-      'colorHex': colorHex, 
-    });
-  }
+  // --- HABIT METHODS ---
 
-  Future<List<Map<String, dynamic>>> getCustomFocusAreas() async {
-    final db = await instance.database;
-    return await db.query('custom_focus_areas');
-  }
 
   Future<List<Map<String, dynamic>>> getAllHabits() async {
     final db = await instance.database;
@@ -169,6 +189,8 @@ class DatabaseHelper {
     return rate.clamp(0.0, 1.0); 
   }
 
+  // --- LOG METHODS ---
+
   Future<List<Map<String, dynamic>>> getLogsForHabit(int habitId) async {
     final db = await instance.database;
     return await db.query(
@@ -178,4 +200,51 @@ class DatabaseHelper {
       orderBy: 'date DESC',
     );
   }
+
+  // --- CUSTOM FOCUS AREA METHODS ---
+
+  Future<int> insertCustomFocusArea(String name, int iconCode, int colorHex) async {
+    final db = await database;
+    return await db.insert('custom_focus_areas', {
+      'name': name,
+      'iconCode': iconCode,
+      'colorHex': colorHex, 
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getCustomFocusAreas() async {
+    final db = await instance.database;
+    return await db.query('custom_focus_areas');
+  }
+
+  Future<int> deleteCustomFocusArea(String name) async {
+    final db = await instance.database;
+    return await db.delete(
+      'custom_focus_areas',
+      where: 'name = ?',
+      whereArgs: [name],
+    );
+  }
+
+  // Inside DatabaseHelper class
+Future<void> deleteFullDatabase() async {
+  try {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, 'habithero.db');
+    
+    // 1. Close the connection if it's open
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+    
+    // 2. Delete the physical file from the phone storage
+    await deleteDatabase(path);
+    debugPrint("Database deleted successfully.");
+  } catch (e) {
+    debugPrint("Error deleting database: $e");
+    rethrow;
+  }
+}
+
 }

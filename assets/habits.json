@@ -4,9 +4,9 @@
       "name": "Modern",
       "icon": "devices",
       "habits": [
-        { "title": "Block Screen Time", "duration": "10 MINS", "icon": "phonelink_off" },
-        { "title": "Limit Caffeine Intake", "duration": "5 MINS", "icon": "coffee" },
-        { "title": "Intermittent Fasting", "duration": "3 MINS", "icon": "timer" },
+        { "title": "Block Screen Time", "duration": "Take a break from brainrot", "icon": "phonelink_off" },
+        { "title": "Limit Caffeine Intake", "duration": "Use your own energy and alertness", "icon": "coffee" },
+        { "title": "Intermittent Fasting", "duration": "Take care of your gut", "icon": "timer" },
         { "title": "Laugh More", "duration": "3 MINS", "icon": "sentiment_very_satisfied" },
         { "title": "Practice Hobby", "duration": "3 MINS", "icon": "brush" },
         { "title": "Fast clean-up", "duration": "3 MINS", "icon": "cleaning_services" },

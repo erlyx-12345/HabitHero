@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/dashboard_controller.dart';
 import '../components/custom_navbar.dart';
 import '../services/notification_service.dart';
+import '../services/quote_api_service.dart';
 import 'create_habit_screen.dart';
 import 'habit_details_screen.dart'; 
 import '../models/habit_model.dart';
@@ -103,7 +105,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> _allHabits = [];
   String? _displayName;
   int _navIndex = 0;
+  int? _userLevel;
   bool _isLoading = true;
+  Map<String, String>? _dailyQuote;
+  // inside _DashboardScreenState clas
+
+List<Map<String, String>> _realQuotes = [];
+int _quoteIndex = 0;
+Timer? _timer;
 
   final ScrollController _dateScrollController = ScrollController();
 
@@ -120,14 +129,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Color slate400 = const Color(0xFF94A3B8);
   final Color slate100 = const Color(0xFFF1F5F9);
 
-  @override
+ @override
 void initState() {
   super.initState();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   _displayName = widget.userName;
-  _initAppData(); // This now handles the scroll internally
+  _initAppData();
   _fetchUserData();
+  _fetchRealQuotes();
 }
+
+@override
+void dispose() {
+  _timer?.cancel();
+  super.dispose();
+}
+
+Future<void> _fetchRealQuotes() async {
+  final batch = await QuoteApiService.getQuoteBatch();
+  if (mounted && batch.isNotEmpty) {
+    setState(() {
+      _realQuotes = batch;
+    });
+    // Start switching every 2 seconds
+    _timer = Timer.periodic(const Duration(seconds: 4), (t) {
+      if (mounted) {
+        setState(() {
+          _quoteIndex = (_quoteIndex + 1) % _realQuotes.length;
+        });
+      }
+    });
+  }
+}
+
+  // UPDATED FETCH METHOD
+  Future<void> _fetchUserData() async {
+    final userData = await ProfileController.fetchUserData();
+    if (userData != null && mounted) {
+      setState(() {
+        _displayName = userData['name'];
+        _profilePath = userData['profilePath'];
+        // Retrieve the selectedLevel from the database map
+        _userLevel = userData['selectedLevel'] ?? 1; 
+      });
+    }
+  }
+
   void _scrollToToday({bool animated = true}) {
   if (!_dateScrollController.hasClients) return;
 
@@ -756,6 +803,8 @@ Widget build(BuildContext context) {
                             const SizedBox(height: 20),
                             _buildHeader(),
                             const SizedBox(height: 24),
+                            _buildDailyQuoteCard(), // <-- Insert it here
+                            const SizedBox(height: 10),
                             _buildDateCarousel(),
                             const SizedBox(height: 16),
                             _buildTimeFilters(),
@@ -795,81 +844,96 @@ Widget build(BuildContext context) {
 }
 
   Widget _buildHeader() {
-  const Color primaryGreen = Color(0xFF10B981);
-  const Color slate400 = Color(0xFF94A3B8);
-  const Color slate900 = Color(0xFF0F172A);
+    const Color slate400 = Color(0xFF94A3B8);
+    const Color slate900 = Color(0xFF0F172A);
 
-  return Row(
-    children: [
-      GestureDetector(
-        onTap: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-          );
-          _fetchUserData();
-        },
-        child: Container(
-          width: 52,
-          height: 52,
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: primaryGreen.withOpacity(0.2),
-              width: 2,
-            ),
-          ),
-          child: CircleAvatar(
-            backgroundColor: primaryGreen.withOpacity(0.1),
-            backgroundImage: (_profilePath != null && _profilePath!.isNotEmpty)
-                ? FileImage(File(_profilePath!))
-                : const NetworkImage(
-                    "https://ui-avatars.com/api/?name=User&background=10B981&color=fff",
-                  ) as ImageProvider,
+    final List<Map<String, dynamic>> borderLibrary = [
+      {'level': 1, 'colors': [Colors.brown, Colors.blueGrey]},
+      {'level': 2, 'colors': [const Color(0xFF3B82F6), const Color(0xFF2DD4BF)]},
+      {'level': 3, 'colors': [const Color(0xFFF59E0B), const Color(0xFFFCD34D)]},
+      {'level': 4, 'colors': [const Color(0xFF10B981), const Color(0xFFD1FAE5)]},
+      {'level': 5, 'colors': [const Color(0xFF8B5CF6), const Color(0xFFD8B4FE)]},
+      {'level': 6, 'colors': [const Color(0xFFEF4444), const Color(0xFFFCA5A5)]},
+      {'level': 7, 'colors': [const Color(0xFFFFD700), const Color(0xFF8B5CF6), const Color(0xFF0F172A)]},
+    ];
+
+    var currentBorder = borderLibrary.firstWhere(
+      (b) => b['level'] == (_userLevel ?? 1),
+      orElse: () => borderLibrary[0],
+    );
+
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            );
+            _fetchUserData(); 
+          },
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              CustomPaint(
+                painter: MLBBBorderPainter(
+                  colors: currentBorder['colors'],
+                  level: _userLevel ?? 1,
+                ),
+                size: const Size(64, 64),
+              ),
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: Colors.white,
+                child: CircleAvatar(
+                  radius: 22,
+                  backgroundColor: const Color(0xFFF1F5F9), // Subtle slate background
+                  // If profile exists, show it as background image
+                  backgroundImage: (_profilePath != null && _profilePath!.isNotEmpty)
+                      ? FileImage(File(_profilePath!))
+                      : null,
+                  // If no profile, show the default user icon
+                  child: (_profilePath == null || _profilePath!.isEmpty)
+                      ? const Icon(
+                          Icons.person_rounded,
+                          color: Color(0xFF94A3B8),
+                          size: 28,
+                        )
+                      : null,
+                ),
+              ),
+            ],
           ),
         ),
-      ),
-      const SizedBox(width: 14),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Welcome back,",
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: slate400,
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Welcome back,",
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: slate400,
+                ),
               ),
-            ),
-            Text(
-              _displayName ?? 'Hero',
-              style: GoogleFonts.poppins(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: slate900,
-                height: 1.2,
+              Text(
+                _displayName ?? 'Hero',
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: slate900,
+                  height: 1.2,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-      _buildProgressRing(),
-    ],
-  );
-}
-
-Future<void> _fetchUserData() async {
-  final userData = await ProfileController.fetchUserData();
-  if (userData != null && mounted) {
-    setState(() {
-      _displayName = userData['name'];
-      _profilePath = userData['profilePath'];
-    });
+        _buildProgressRing(),
+      ],
+    );
   }
-}
-
   Widget _buildProgressRing() {
     double progress = _controller.calculateProgress(_allHabits);
     return Stack(
@@ -1014,29 +1078,12 @@ Widget _buildDateCarousel() {
   }
 
   Widget _buildPriorityCard(Map<String, dynamic> habit) {
-  final DateTime now = DateTime.now();
   final bool isDone = habit['isCompleted'] == true;
-  
-  // Dynamic Missed Logic for the Priority Card
-  final bool isMissed = (() {
-    if (isDone) return false;
-    final String time = (habit['timeOfDay'] ?? "Anytime").toString().toLowerCase();
-    final int hour = now.hour;
+  final bool isSkipped = habit['isSkipped'] == true;
+  final bool isMissed = habit['isMissed'] == true;
 
-    switch (time) {
-      case 'morning':
-        return hour >= 12; // Expired if 12:00 PM or later
-      case 'afternoon':
-        return hour >= 18; // Expired if 6:00 PM or later
-      case 'evening':
-      case 'anytime':
-        return false;      // Valid until the 24-hour day is complete
-      default:
-        return false;
-    }
-  })();
-
-  if (isDone || isMissed) {
+  // If the habit is finished in any way (Done, Missed, or Skipped), hide the card.
+  if (isDone || isMissed || isSkipped) {
     return _buildAllDoneCard();
   }
 
@@ -1051,8 +1098,12 @@ Widget _buildDateCarousel() {
 
   final int currentStreak = habit['streak'] ?? 0;
   final String habitTime = habit['timeOfDay'] ?? "Anytime";
-  final IconData customIcon = habit['iconCode'] != null ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') : Icons.bolt;
-  final Color customColor = habit['colorHex'] != null ? Color(habit['colorHex']) : deepEmerald;
+  final IconData customIcon = habit['iconCode'] != null 
+      ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') 
+      : Icons.bolt;
+  final Color customColor = habit['colorHex'] != null 
+      ? Color(habit['colorHex']) 
+      : deepEmerald;
 
   return GestureDetector(
     onTap: () => _showHabitActions(habit, customIcon, habitTime),
@@ -1061,7 +1112,13 @@ Widget _buildDateCarousel() {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(40),
-        boxShadow: [BoxShadow(color: customColor.withOpacity(0.1), blurRadius: 25, offset: const Offset(0, 20))],
+        boxShadow: [
+          BoxShadow(
+            color: customColor.withOpacity(0.1), 
+            blurRadius: 25, 
+            offset: const Offset(0, 20)
+          )
+        ],
         border: Border.all(color: slate100),
       ),
       child: Column(
@@ -1075,29 +1132,41 @@ Widget _buildDateCarousel() {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: customColor.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                      decoration: BoxDecoration(
+                        color: customColor.withOpacity(0.1), 
+                        borderRadius: BorderRadius.circular(20)
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.local_fire_department, color: customColor, size: 14),
                           const SizedBox(width: 4),
-                          Text("$currentStreak DAY STREAK", style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: customColor)),
+                          Text(
+                            "$currentStreak DAY STREAK", 
+                            style: GoogleFonts.poppins(
+                              fontSize: 10, 
+                              fontWeight: FontWeight.w800, 
+                              color: customColor
+                            )
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Text(habit['title'] ?? "No Title", style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w700, color: slate900)),
+                    Text(
+                      habit['title'] ?? "No Title", 
+                      style: GoogleFonts.poppins(
+                        fontSize: 24, 
+                        fontWeight: FontWeight.w700, 
+                        color: slate900
+                      )
+                    ),
                     Text(
                       rHour != null 
                           ? "Reminder set for ${rHour.toString().padLeft(2, '0')}:${rMinute.toString().padLeft(2, '0')}"
                           : "No reminder set",
                       style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: slate400),
                     ),
-                    if (habit['endDate'] != null)
-                      Text(
-                        "End date: ${habit['endDate']}",
-                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: slate400),
-                      ),
                   ],
                 ),
               ),
@@ -1107,7 +1176,10 @@ Widget _buildDateCarousel() {
                   const SizedBox(height: 8),
                   Container(
                     width: 64, height: 64,
-                    decoration: BoxDecoration(color: customColor.withOpacity(0.1), borderRadius: BorderRadius.circular(24)),
+                    decoration: BoxDecoration(
+                      color: customColor.withOpacity(0.1), 
+                      borderRadius: BorderRadius.circular(24)
+                    ),
                     child: Icon(customIcon, color: customColor, size: 36),
                   ),
                 ],
@@ -1137,38 +1209,10 @@ Widget _buildDateCarousel() {
 }
 
   Widget _buildHabitTile(Map<String, dynamic> habit) {
-  final DateTime now = DateTime.now();
+  // Use the pre-calculated flags from the DashboardController
   final bool isDone = habit['isCompleted'] == true;
-  
-  // Date contextual flags from Dashboard state
-  DateTime selectedDateOnly = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-  DateTime todayDateOnly = DateTime(now.year, now.month, now.day);
-  bool isToday = selectedDateOnly.isAtSameMomentAs(todayDateOnly);
-  bool isPastDay = selectedDateOnly.isBefore(todayDateOnly);
-
-  // Dynamic Missed Logic for Habit Tiles
-  final bool isMissed = (() {
-    if (isDone) return false;
-    if (isPastDay) return true; // Anything not completed on a previous day is missed
-
-    if (isToday) {
-      final int hour = now.hour;
-      final String timeCategory = (habit['timeOfDay'] ?? "Anytime").toString().toLowerCase();
-
-      switch (timeCategory) {
-        case 'morning':
-          return hour >= 12; // Missed starting 12:00 PM
-        case 'afternoon':
-          return hour >= 18; // Missed starting 6:00 PM
-        case 'evening':
-        case 'anytime':
-          return false;      // Not missed until the day actually ends
-        default:
-          return false;
-      }
-    }
-    return false;
-  })();
+  final bool isSkipped = habit['isSkipped'] == true;
+  final bool isMissed = habit['isMissed'] == true;
 
   final String habitTime = habit['timeOfDay'] ?? "Anytime";
   
@@ -1180,61 +1224,96 @@ Widget _buildDateCarousel() {
     rMinute = int.tryParse(parts[1]);
   }
 
-  final IconData customIcon = habit['iconCode'] != null ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') : Icons.psychology;
-  final Color customColor = habit['colorHex'] != null ? Color(habit['colorHex']) : primaryGreen;
+  final IconData customIcon = habit['iconCode'] != null 
+      ? IconData(habit['iconCode'], fontFamily: 'MaterialIcons') 
+      : Icons.psychology;
+  final Color customColor = habit['colorHex'] != null 
+      ? Color(habit['colorHex']) 
+      : primaryGreen;
 
   return GestureDetector(
     onTap: () {
-      if (!isDone && !isMissed) {
+      if (!isDone && !isMissed && !isSkipped) {
         _showHabitActions(habit, customIcon, habitTime);
       } else {
-        String message = isDone ? "This habit is already completed." : "This habit was missed and cannot be modified.";
+        String message = isDone 
+            ? "This habit is already completed." 
+            : isSkipped 
+                ? "This habit was skipped for today." 
+                : "This habit was missed and cannot be modified.";
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message, style: GoogleFonts.poppins(fontSize: 12)), backgroundColor: slate900, behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text(message, style: GoogleFonts.poppins(fontSize: 12)), 
+            backgroundColor: slate900, 
+            behavior: SnackBarBehavior.floating
+          ),
         );
       }
     },
     child: Opacity(
-      opacity: (isDone || isMissed) ? 0.4 : 1.0, 
+      opacity: (isDone || isMissed || isSkipped) ? 0.5 : 1.0, 
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: isMissed ? Colors.redAccent.withOpacity(0.2) : (isDone ? customColor.withOpacity(0.3) : slate100)),
+          border: Border.all(
+            color: isMissed 
+                ? Colors.redAccent.withOpacity(0.2) 
+                : (isSkipped ? slate400.withOpacity(0.2) : (isDone ? customColor.withOpacity(0.3) : slate100)),
+          ),
         ),
         child: Row(
           children: [
             Container(
               width: 48, height: 48,
               decoration: BoxDecoration(
-                  color: isMissed ? Colors.redAccent.withOpacity(0.1) : customColor.withOpacity(0.1),
+                  color: isMissed 
+                      ? Colors.redAccent.withOpacity(0.1) 
+                      : (isSkipped ? slate100 : customColor.withOpacity(0.1)),
                   borderRadius: BorderRadius.circular(16)),
-              child: Icon(isMissed ? Icons.timer_off_outlined : (isDone ? Icons.check_circle : customIcon),
-                  color: isMissed ? Colors.redAccent : customColor, size: 24),
+              child: Icon(
+                  isMissed 
+                      ? Icons.timer_off_outlined 
+                      : (isSkipped ? Icons.block_flipped : (isDone ? Icons.check_circle : customIcon)),
+                  color: isMissed ? Colors.redAccent : (isSkipped ? slate400 : customColor), 
+                  size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(habit['title'],
-                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700, color: slate900, decoration: (isDone || isMissed) ? TextDecoration.lineThrough : null)),
                   Text(
-                    rHour != null 
-                        ? "Reminder at ${rHour.toString().padLeft(2, '0')}:${rMinute.toString().padLeft(2, '0')}"
-                        : (isMissed ? "MISSED ($habitTime)" : (isDone ? "COMPLETED" : "READY TO START")),
-                    style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: isMissed ? Colors.redAccent : (isDone ? customColor : slate400)),
+                    habit['title'] ?? "No Title",
+                    style: GoogleFonts.poppins(
+                      fontSize: 16, 
+                      fontWeight: FontWeight.w700, 
+                      color: slate900, 
+                      decoration: (isDone || isMissed || isSkipped) ? TextDecoration.lineThrough : null
+                    )
                   ),
-                  if (habit['endDate'] != null && !isDone && !isMissed)
-                    Text("Ends on ${habit['endDate']}", style: GoogleFonts.poppins(fontSize: 11, color: slate400)),
+                  Text(
+                    isSkipped 
+                        ? "SKIPPED FOR TODAY" 
+                        : (isDone 
+                            ? "COMPLETED" 
+                            : (isMissed ? "MISSED ($habitTime)" : (rHour != null 
+                                ? "Reminder at ${rHour.toString().padLeft(2, '0')}:${rMinute.toString().padLeft(2, '0')}"
+                                : "READY TO START"))),
+                    style: GoogleFonts.poppins(
+                        fontSize: 12, 
+                        fontWeight: FontWeight.w600, 
+                        color: isMissed ? Colors.redAccent : (isSkipped ? slate400 : (isDone ? customColor : slate400))),
+                  ),
                 ],
               ),
             ),
             if (isDone) Icon(Icons.verified, color: customColor, size: 20),
             if (isMissed) const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
-            if (!isDone && !isMissed) Icon(Icons.more_vert, color: slate400, size: 20),
+            if (isSkipped) Icon(Icons.remove_circle_outline, color: slate400, size: 20),
+            if (!isDone && !isMissed && !isSkipped) Icon(Icons.more_vert, color: slate400, size: 20),
           ],
         ),
       ),
@@ -1260,6 +1339,92 @@ Widget _buildDateCarousel() {
     );
   }
 
+
+Widget _buildDailyQuoteCard() {
+  if (_realQuotes.isEmpty) return const SizedBox.shrink();
+
+  final current = _realQuotes[_quoteIndex];
+
+  return Container(
+    height: 75, // Strictly fixed height
+    width: double.infinity,
+    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: const BoxDecoration(
+      color: Colors.transparent,
+    ),
+    child: Stack(
+      children: [
+        Positioned(
+          left: 0,
+          top: 0,
+          child: Text(
+            '“',
+            style: GoogleFonts.playfairDisplay(
+              fontSize: 42,
+              fontWeight: FontWeight.w900,
+              color: primaryGreen.withOpacity(0.2),
+              height: 0.8,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 24, top: 0, right: 16),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 1000),
+            layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
+              return Stack(
+                alignment: Alignment.centerLeft,
+                children: <Widget>[
+                  ...previousChildren,
+                  if (currentChild != null) currentChild,
+                ],
+              );
+            },
+            child: Column(
+              key: ValueKey<int>(_quoteIndex),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  current['quote']!,
+                  // Removed maxLines and overflow so it wraps to new lines naturally
+                  style: GoogleFonts.poppins(
+                    fontSize: 11, // Slightly smaller to ensure 2-3 lines fit comfortably
+                    fontWeight: FontWeight.w500,
+                    fontStyle: FontStyle.italic,
+                    color: slate900.withOpacity(0.85),
+                    height: 1.2,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 1,
+                      color: primaryGreen.withOpacity(0.5),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      current['author']!,
+                      style: GoogleFonts.poppins(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: primaryGreen,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
   Widget _buildSectionLabel(String label) => Text(label,
       style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w800, color: slate400, letterSpacing: 1.5));
 

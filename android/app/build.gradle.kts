@@ -10,9 +10,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        // This is what the notification library specifically asked for
         isCoreLibraryDesugaringEnabled = true
-        
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -32,11 +30,19 @@ android {
     }
 
     buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("debug")
+        getByName("release") {
+            // If you haven't set up a release keystore yet, 
+            // comment out the signingConfig line below.
+            // signingConfig = signingConfigs.getByName("release")
+            
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
-}
+} // Fixed: Added missing closing bracket for the 'android' block
 
 flutter {
     source = "../.."

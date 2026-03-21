@@ -344,7 +344,9 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
  Future<void> _handleSaveProcess() async {
     final String finalTitle = _titleController.text.trim();
     if (finalTitle.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Habit name cannot be empty")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Habit name cannot be empty")),
+      );
       return;
     }
 
@@ -356,13 +358,67 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
       }
     }
 
+    // Format the reminder time for database storage (HH:mm)
     String? dbTime = _pickedReminderTime != null 
       ? "${_pickedReminderTime!.hour.toString().padLeft(2, '0')}:${_pickedReminderTime!.minute.toString().padLeft(2, '0')}" 
       : null;
 
+    // Format the end date for database storage (yyyy-MM-dd)
     final String? formattedEndDate = _endDate != null 
         ? DateFormat('yyyy-MM-dd').format(_endDate!) 
         : null;
+
+    // Determine the corrected Start Date
+    DateTime? finalStartDate = widget.initialStartDate;
+
+    if (!isEditMode) {
+      final now = DateTime.now();
+      bool timePassed = false;
+      
+      // Check if the current hour has passed the threshold for the selected slot
+      int hour = now.hour;
+      switch (_selectedTimePeriod.toString().toLowerCase()) {
+        case 'morning': 
+          if (hour >= 12) timePassed = true; 
+          break;
+        case 'afternoon': 
+          if (hour >= 18) timePassed = true; 
+          break;
+        case 'evening': 
+          if (hour >= 23) timePassed = true; 
+          break;
+      }
+
+      // If the slot is done for today, shift start date to tomorrow and notify user
+      if (timePassed) {
+        final todayStr = DateFormat('yyyy-MM-dd').format(now);
+        final requestedStartStr = finalStartDate != null 
+            ? DateFormat('yyyy-MM-dd').format(finalStartDate) 
+            : todayStr;
+
+        // Only shift if the requested start was actually for today
+        if (requestedStartStr == todayStr) {
+          finalStartDate = now.add(const Duration(days: 1));
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "$_selectedTimePeriod is already done for today. Habit set for tomorrow.",
+                style: GoogleFonts.poppins(
+                  fontSize: 13, 
+                  fontWeight: FontWeight.w600, 
+                  color: Colors.white
+                ),
+              ),
+              backgroundColor: _selectedColor,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    }
 
     int? habitId; 
     try {
@@ -389,14 +445,18 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
           reminder: _remindersEnabled ? 1 : 0,
           reminderTime: dbTime,
           endDate: formattedEndDate,
-          customStartDate: widget.initialStartDate,
+          customStartDate: finalStartDate, // Pass the corrected date
         );
       }
 
+      // Handle individual Notification scheduling
       if (habitId != null && habitId != 0) {
         if (_remindersEnabled && _pickedReminderTime != null) {
           await _notificationService.scheduleHabitReminder(
-            habitId, finalTitle, _pickedReminderTime!.hour, _pickedReminderTime!.minute
+            habitId, 
+            finalTitle, 
+            _pickedReminderTime!.hour, 
+            _pickedReminderTime!.minute
           );
         } else {
           await _notificationService.cancelReminder(habitId);
@@ -404,14 +464,19 @@ class _HabitDetailsScreenState extends State<HabitDetailsScreen> {
       }
 
       if (mounted) {
+        // Return true to trigger a refresh on the dashboard
         Navigator.pop(context, true); 
         if (!isEditMode) Navigator.pop(context, true); 
       }
     } catch (e) {
       debugPrint("Save Error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to save habit. Please try again.")),
+        );
+      }
     }
   }
-
   Widget _buildSectionLabel(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
     child: Text(text, style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFF94A3B8), letterSpacing: 1.2)),

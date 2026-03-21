@@ -309,6 +309,7 @@ class _CreateHabitScreenState extends State<CreateHabitScreen> {
                               timeOfDay: "Anytime")
                           : habit,
                       focusArea: _selectedArea!.name,
+                      initialStartDate: widget.initialStartDate, // FIXED: Pass the carousel date down
                     ),
                   ),
                 );

@@ -30,37 +30,43 @@ class DashboardController {
   }
 
   /// Main data fetch: Retrieves habits, calculates missed status, and sorts them
-  Future<List<Map<String, dynamic>>> getHabitsWithLogs({DateTime? date}) async {
+ /// Main data fetch: Retrieves habits and their log status (Completed vs Skipped)
+ // inside dashboard_controller.dart
+
+Future<List<Map<String, dynamic>>> getHabitsWithLogs({DateTime? date}) async {
   final db = await dbHelper.database;
-  // Use the provided date, OR today's date if null
   DateTime targetDate = date ?? DateTime.now(); 
   String dateStr = DateFormat('yyyy-MM-dd').format(targetDate);
 
   final List<Map<String, dynamic>> habitsData = await db.rawQuery('''
-    SELECT h.*, l.isCompleted
+    SELECT h.*, l.isCompleted, l.isSkipped
     FROM habits h
     LEFT JOIN daily_logs l ON h.id = l.habitId AND l.date = ?
     WHERE (h.endDate IS NULL OR h.endDate = '' OR date(h.endDate) >= date(?))
     AND (h.startDate IS NULL OR h.startDate = '' OR date(h.startDate) <= date(?))
-    AND (l.isCompleted IS NULL OR l.isCompleted != -1)
   ''', [dateStr, dateStr, dateStr]); 
 
   List<Map<String, dynamic>> processedHabits = habitsData.map((habit) {
-    final bool isDone = habit['isCompleted'] == 1;
+    // FIX: Explicitly handle null values from the LEFT JOIN
+    // If there is no log, habit['isCompleted'] is NULL, not 0.
+    final bool isDone = (habit['isCompleted'] ?? 0) == 1;
+    final bool isSkipped = (habit['isSkipped'] ?? 0) == 1; 
+    
     final String habitTime = habit['timeOfDay'] ?? "Morning";
     
-    // Pass targetDate here so "Missed" logic knows which day it's looking at
-    bool isMissed = _calculateIsMissed(isDone, habitTime, targetDate);
+    // If isSkipped is true, isMissed should be false
+    bool isMissed = !isSkipped && _calculateIsMissed(isDone, habitTime, targetDate);
 
     return {
       ...habit,
       'isCompleted': isDone,
+      'isSkipped': isSkipped, 
       'isMissed': isMissed,
-      'isFinished': isDone || isMissed,
+      'isFinished': isDone || isMissed || isSkipped,
     };
   }).toList();
 
-  // Sort and return...
+  // Sorting logic remains the same...
   processedHabits.sort((a, b) {
     int aStatus = a['isFinished'] ? 1 : 0;
     int bStatus = b['isFinished'] ? 1 : 0;
@@ -70,6 +76,19 @@ class DashboardController {
 
   return processedHabits;
 }
+
+  /// Updated to use the new isSkipped column instead of using -1 in isCompleted
+  Future<void> deleteHabitForDate(int habitId, DateTime selectedDate) async {
+    final db = await dbHelper.database;
+    final String dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
+
+    await db.insert('daily_logs', {
+      'habitId': habitId,
+      'date': dateStr,
+      'isCompleted': 0, 
+      'isSkipped': 1, // Correctly using the new column
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
   /// Determines if a habit should be marked as 'Missed'
   bool _calculateIsMissed(bool isDone, String habitTime, DateTime targetDate) {
     if (isDone) return false;
@@ -122,17 +141,6 @@ class DashboardController {
     });
   }
 
-  /// Hide habit for a specific date
-  Future<void> deleteHabitForDate(int habitId, DateTime selectedDate) async {
-    final db = await dbHelper.database;
-    final String dateStr = DateFormat('yyyy-MM-dd').format(selectedDate);
-
-    await db.insert('daily_logs', {
-      'habitId': habitId,
-      'date': dateStr,
-      'isCompleted': -1, 
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
-  }
 
   /// Permanently stop a habit from appearing after a certain date
   Future<void> stopHabitFromToday(int habitId, DateTime selectedDate) async {
