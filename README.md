@@ -1,80 +1,240 @@
 # HabitHero
 
-**HabitHero** is a mobile habit tracker designed to help users build positive routines, monitor daily progress, and maintain streaks. The app promotes consistency, accountability, and personal growth through simple tracking and visual feedback.
+**HabitHero** is a cross-platform mobile habit tracker for Android and iOS, built with Flutter. The app helps users form long-term routines by logging daily habits, tracking completion streaks, and providing motivational quotes.
+
+- Habit creation and categorization (Health, Study, Fitness, etc.)
+- Daily check-in system for consistent follow-through
+- Streak and progress analytics for user motivation
+- Offline capability with local SQLite storage, plus optional online quote API
+- Simple, accessible UI designed for quick interactions and low friction
 
 ---
 
 ## Project Overview
 
-The HabitHero application allows users to:
+HabitHero helps users:
 
-- Manage personal habits  
-- Log daily progress  
-- Maintain streaks for consistency  
-- Stay motivated with quotes from a Motivational Quotes API  
+- Create and manage personal habits
+- Log and review daily completions
+- Track consecutive streaks and historical performance
+- Receive motivational quotes from a remote API
+- Store data offline with SQLite for persistence
 
-This application is developed as part of the **Advance Mobile Application Development** course. It demonstrates Flutter development, SQLite integration, and collaborative Git workflow practices.
+The app is developed for the **Advance Mobile Application Development** course and showcases Flutter, local persistence, API integration, and collaborative team development.
+
+---
+
+## Team Members
+
+- ROLLORATA, ARLENE V. - Senior Full Stack
+- RANQUE, CHRISTIAN VILLE M. - Quality Assurance
+- CAÑEDO, ALBERT JHUN P. - Quality Assurance
+- PUSTA, STEPHEN D. - Project Manager
+- PAJA, JOHN MARK R. - Junior Full Stack
+- SORIANO, MARL LAURENCE A. - Junior Full Stack
+- SERRANO, JOSHUA S. - Junior Full Stack
 
 ---
 
-## Features
+## Documentation
 
-- Create and manage daily habits  
-- Track progress and streaks  
-- View habit history  
-- Simple and user-friendly interface
-- Motivational quotes via API integration  
-- Offline data storage using SQLite
+All project documents can be accessed below:
 
----
-## API Integration
-
-The app integrates a **Motivational Quotes API** to display inspiring quotes that encourage users to stay consistent with their habits.
-
-**Example Use:**
-- Display a quote on the home screen
-- Show a new quote each day
-
----
-## Tech Stack
-
-- **Framework:** Flutter  
-- **Language:** Dart  
-- **Database:** SQLite  
-- **API:** Motivational Quotes API  
-- **Version Control:** Git & GitHub
+- 🔗 [API Documentation](./docs/API.md)
+- 🔗 [Architecture Documentation](./docs/Architecture.md)
+- 🔗 [Bug Report 1](./docs/BugReport_1.md)
+- 🔗 [Bug Report 2](./docs/BugReport_2.md)
+- 🔗 [ERD Diagram](./docs/ERD.md)
+- 🔗 [Project Proposal](./docs/Project%20Proposal.md)
+- 🔗 [Software Requirements Specification](./docs/Software-Requirements-Specification.md)
+- 🔗 [Sprint 1](./docs/Sprint_1.md)
+- 🔗 [Sprint 2](./docs/Sprint_2.md)
+- 🔗 [Sprint 3](./docs/Sprint-3%20(DONE).md)
+- 🔗 [Test Case Document](./docs/Test_Case.md)
+- 🔗 [Test Plan](./docs/Test_Plan.md)
+- 🔗 [User Manual](./docs/UserManual.md)
 
 ---
-## Branching Strategy
+## Implementation Summary
 
-- **main** ensures a stable, submission-ready version of the project.  
-- **develop** allows safe collaboration and integration of team contributions. 
-- **feature/*** used for developing new features before merging into `develop`.  
-
----
-### 📌 Workflow
-
-1. Create branch from `develop`
-2. Implement feature or fix
-3. Submit Pull Request → `develop`
-4. Final merge → `main` (protected)
+1. Flutter architecture: UI in `lib/screens`, widgets in `lib/components`, services in `lib/services`, models in `lib/models`.
+2. Data persistence: Local storage using `sqflite` + an SQLite database for habits and history.
+3. Habit management: add, edit, delete habits; each habit has name, goal, frequency, and completion stats.
+4. Progress tracking: daily check-ins for habit completion and streak computation.
+5. Motivational Quotes API: fetches and displays a quote on the home page (online mode only).
+6. Offline behavior: app works without internet for habit data; quotes use cached or offline fallback message when fetch fails.
 
 ---
+
+## Detailed Implementation
+
+- Habit model (`Habit`): id, title, description, type, targetDays, currentStreak, bestStreak, lastCompletedDate.
+- DailyLog model (`DailyLog`): id, habitId, date, isCompleted.
+- Quote model (`Quote`): text, author, fetchedAt.
+- Database service (`lib/services/db_service.dart`): includes `initializeDB()`, `createHabit()`, `updateHabit()`, `deleteHabit()`, `getHabits()`, `logCompletion()`, `getStreaks()`.
+- API service (`lib/services/api_service.dart`): `fetchMotivationalQuote()` with error-handling and local fallback.
+- Controllers (`lib/controllers`): state management with `ChangeNotifier` for habit list updates, streak recalculation, and API quote refresh.
+- Feature flow:
+  - Add habit → store in `habits` table.
+  - Complete habit today → insert in `daily_logs` then update habit streak.
+  - Fetch streaks via DB query: `SELECT COUNT(*) FROM daily_logs WHERE habitId=? AND date BETWEEN ? AND ?`.
+  - Display quotes on Home screen and refresh by pull-to-refresh.
+
+---
+
+## Screenshots
+
+<p align="center">
+  <img src="assets/screenshots/home.png" width="200"><br>
+  <b>Home Screen</b>
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/habits_list.png" width="200"><br>
+  <b>Habits List Screen</b>
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/daily_log.png" width="200"><br>
+  <b>Daily Log Screen</b>
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/stats.png" width="200"><br>
+  <b>Statistics Screen</b>
+</p>
+
+---
+
 ## Project Structure
 
+```
 lib/
-├── models/
-├── services/
-├── screens/
-├── widgets/
-└── main.dart
+ ┣ main.dart
+ ┣ components/
+ ┃ ┗ custom_navbar.dart
+ ┣ controllers/
+ ┃ ┣ createhabit_controller.dart
+ ┃ ┣ dashboard_controller.dart
+ ┃ ┣ labs_controller.dart
+ ┃ ┣ profile_controller.dart
+ ┃ ┣ streaks_controller.dart
+ ┃ ┣ target_controller.dart
+ ┃ ┣ user_controller.dart
+ ┃ ┗ profile/
+ ┃   ┗ profile_controller.dart
+ ┣ models/
+ ┃ ┣ daily_log.dart
+ ┃ ┣ habit.dart
+ ┃ ┣ habit_model.dart
+ ┃ ┗ user.dart
+ ┣ screens/
+ ┃ ┣ create_habit_screen.dart
+ ┃ ┣ dashboard_screen.dart
+ ┃ ┣ habit_details_screen.dart
+ ┃ ┣ hero_name_screen.dart
+ ┃ ┣ home_screen.dart
+ ┃ ┣ labs_screen.dart
+ ┃ ┣ profile_screen.dart
+ ┃ ┣ streaks_screen.dart
+ ┃ ┣ welcome_screen.dart
+ ┃ ┗ profile/
+ ┃   ┗ profile_screen.dart
+ ┣ services/
+ ┃ ┣ database_helper.dart
+ ┃ ┣ habit_service.dart
+ ┃ ┣ notification_service.dart
+ ┃ ┗ quote_api_service.dart
+```
 
 ---
 
-## How to Run the Project
+## Tech Stack
 
-1. Clone the repository  
-2. Open in VS Code or Android Studio  
-3. Run the following commands:
-   - flutter pub get
-   - flutter run
+- Flutter (UI toolkit)  
+- Dart (programming language)  
+- SQLite via `sqflite` (local data storage)  
+- HTTP package for API calls (`http`)  
+- State management: `Provider` or `ChangeNotifier` pattern  
+- Git/GitHub (collaborative version control)
+
+---
+
+## Setup
+
+### 1. Install required tools
+
+- Flutter SDK: https://flutter.dev/docs/get-started/install (include PATH setup)
+- Android Studio:
+  - Android SDK, emulator images
+  - Flutter and Dart plugins
+- VS Code (optional): Flutter and Dart extensions
+
+### 2. Verify your environment
+
+```bash
+flutter doctor
+```
+
+Fix issues reported by `flutter doctor` (e.g., missing platforms or licenses).
+
+### 3. Get project dependencies
+
+```bash
+cd C:\Users\arlen\OneDrive\Documents\ITMSD\HabitHero_Final\HabitHero
+flutter pub get
+```
+
+### 4. Configure device/emulator
+
+- Run `flutter devices` to list available targets.
+- Launch emulator or connect physical device.
+
+---
+
+## Run (Development)
+
+```bash
+flutter clean
+flutter pub get
+flutter run
+```
+
+For a specific device/emulator:
+
+```bash
+flutter run -d <deviceId>
+```
+
+---
+
+## Build APK (Android)
+
+```bash
+flutter build apk --release
+```
+
+---
+
+## Testing
+
+```bash
+flutter test
+```
+
+---
+
+## Notes & Troubleshooting
+
+- If you see dependency errors, run `flutter pub get` again and restart your IDE.
+- If a DB migration issue appears after updates, uninstall and reinstall the app to reset local storage.
+- For API/quote fetch errors, verify device/emulator internet access.
+
+---
+
+## Contributions and Workflow
+
+1. Branch off `develop` for each feature or bugfix
+2. Create PR with description and linked issue
+3. Code review, then merge into `develop`
+4. Final candidate merge into `main` once stabilized
